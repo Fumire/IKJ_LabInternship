@@ -1,0 +1,19 @@
+TOOL = /home/jwlee/Spermatogenesis/tools/
+BWA = $(TOOL)bwa-0.7.17/
+CELLRANGER = $(TOOL)cellranger-3.0.2/cellranger
+
+DATA = /home/jwlee/Spermatogenesis/data/
+TRANSCRIPTOME = $(DATA)refdata-cellranger-mm10-3.0.0
+
+SAMPLE_IDS = NS_SW1 NS_SW2 NS_SW3 NS_SW4
+
+all: latest
+.PHONY += latest
+
+%/outs/metrics_summary.csv:
+	$(CELLRANGER) count --transcriptome=$(TRANSCRIPTOME) --fastqs=$(DATA) --id=$(firstword $(subst /, ,$@)) --sample=$(firstword $(subst /, ,$@)) 1> $(firstword $(subst /, ,$@)).cellranger.count.stdout 2> $(firstword $(subst /, ,$@)).cellranger.count.stderr
+
+%/asdf: %/outs/metrics_summary.csv
+	$(CELLRANGER) aggr --id=$(firstword $(subst /, ,$@)) --csv=$< 1> $(firstword $(subst /, ,$@)).cellranger.aggr.stdout 2> $(firstword $(subst /, ,$@)).cellranger.aggr.stderr
+
+latest: $(foreach id,$(SAMPLE_IDS),$(id)/asdf)
