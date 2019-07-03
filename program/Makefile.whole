@@ -7,13 +7,16 @@ TRANSCRIPTOME = $(DATA)refdata-cellranger-mm10-3.0.0
 
 SAMPLE_IDS = NS_SW1 NS_SW2 NS_SW3 NS_SW4
 
-all: latest
+all: tmp.sh latest
 .PHONY += latest
 
-%/outs/metrics_summary.csv:
-	$(CELLRANGER) count --transcriptome=$(TRANSCRIPTOME) --fastqs=$(DATA) --id=$(firstword $(subst /, ,$@)) --sample=$(firstword $(subst /, ,$@)) 1> $(firstword $(subst /, ,$@)).cellranger.count.stdout 2> $(firstword $(subst /, ,$@)).cellranger.count.stderr
+tmp.sh:
+	@echo "make -f /home/jwlee/Spermatogenesis/program/Makefile.whole -C /home/jwlee/Spermatogenesis/result" > $@
 
-%/asdf: %/outs/metrics_summary.csv
-	$(CELLRANGER) aggr --id=$(firstword $(subst /, ,$@)) --csv=$< 1> $(firstword $(subst /, ,$@)).cellranger.aggr.stdout 2> $(firstword $(subst /, ,$@)).cellranger.aggr.stderr
+%/outs/filtered_feature_bc_matrix.h5:
+	$(CELLRANGER) count --transcriptome=$(TRANSCRIPTOME) --fastqs=$(abspath $(DATA)) --id=$(firstword $(subst /, ,$@)) --sample=$(firstword $(subst /, ,$@)) 1> $(firstword $(subst /, ,$@)).cellranger.count.stdout 2> $(firstword $(subst /, ,$@)).cellranger.count.stderr
+
+%/asdf: %/outs/filtered_feature_bc_matrix.h5
+	$(CELLRANGER) reanalyze --id=$(firstword $(subst /, , $@))_reanalyze --matrix=$(abspath $<)
 
 latest: $(foreach id,$(SAMPLE_IDS),$(id)/asdf)
