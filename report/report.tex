@@ -1,3 +1,4 @@
+% !TeX spellcheck = en_US
 % !TeX encoding = UTF-8
 
 \documentclass[aps, 10pt, a4paper]{article}
@@ -89,15 +90,29 @@
     \newpage
     
     \section{Introduction}
+        \subsection{Single Cell Analysis}
+        
+        \subsection{Single Cell Trajectory}
     
     \section{Method}
+        \subsection{Cell Ranger}
+            Cell Ranger is a set of analysis pipelines that process Chromium single-cell RNA-seq output to align reads, generate feature-barcode matrices and perform clustering and gene expression analysis. \cite{ref:cellranger}
+        
+        \subsection{Seurat}
+            Seurat is an R package designed for QC, analysis, and exploration of single-cell RNA-seq data. Seurat aims to enable users to identify and interpret sources of heterogeneity from single-cell transcriptomic measurements, and to integrate diverse types of single-cell data. \cite{ref:seurat1, ref:seurat2}
+        
+        \subsection{Scikit-Learn}
+            Scikit-Learn is a Python module for machine learning built on top of SciPy. \cite{ref:scikit}
     
     \section{Result}
     
     \section{Discussion}
     
+    \section{Acknowledgment}
+    
     \addcontentsline{toc}{section}{References}
+    \bibliographystyle{apalike}
     \bibliography{reference}
-    \bibliographystyle{apastyle}
+
     
 \end{document}
