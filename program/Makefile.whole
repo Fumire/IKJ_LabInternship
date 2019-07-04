@@ -11,12 +11,22 @@ all: tmp.sh latest
 .PHONY += latest
 
 tmp.sh:
-	@echo "make -f /home/jwlee/Spermatogenesis/program/Makefile.whole -C /home/jwlee/Spermatogenesis/result" > $@
+	@echo "make -f /home/jwlee/Spermatogenesis/program/Makefile.whole -C /home/jwlee/Spermatogenesis/result -j 1" > $@
 
-%/outs/filtered_feature_bc_matrix.h5:
-	$(CELLRANGER) count --transcriptome=$(TRANSCRIPTOME) --fastqs=$(abspath $(DATA)) --id=$(firstword $(subst /, ,$@)) --sample=$(firstword $(subst /, ,$@)) 1> $(firstword $(subst /, ,$@)).cellranger.count.stdout 2> $(firstword $(subst /, ,$@)).cellranger.count.stderr
+%/outs/molecule_info.h5 %/outs/filtered_feature_bc_matrix.h5:
+	$(CELLRANGER) count --transcriptome=$(TRANSCRIPTOME) --fastqs=$(abspath $(DATA)) --id=$(firstword $(subst /, ,$@)) --sample=$(firstword $(subst /, ,$@)) 1> $(firstword $(subst /, ,$@)).cellranger.stdout 2> $(firstword $(subst /, ,$@)).cellranger.stderr
 
-%/asdf: %/outs/filtered_feature_bc_matrix.h5
-	$(CELLRANGER) reanalyze --id=$(firstword $(subst /, , $@))_reanalyze --matrix=$(abspath $<)
+aggregation.csv: $(foreach id,$(SAMPLE_IDS),$(id)/outs/molecule_info.h5)
+	@echo "library_id,molecule_h5" > $@
+	$(foreach input,$^,echo "$(firstword $(subst /, ,$(input))),$(abspath $(input))" >> $@;)
 
-latest: $(foreach id,$(SAMPLE_IDS),$(id)/asdf)
+aggr: aggregation.csv
+	$(CELLRANGER) aggr --id=aggr --csv $< --normalize=mapped 1> aggregation.cellranger.stdout 2> aggregation.cellranger.stderr
+
+%_reanalyze/outs/analysis/tsne/2_components/projection.csv: %/outs/filtered_feature_bc_matrix.h5
+	$(CELLRANGER) reanalyze --id=$(firstword $(subst /, ,$@)) --matrix=$(abspath $<) 1> $(firstword $(subst /, ,$@)).cellranger.stdout 2> $(firstword $(subst /, ,$@)).cellranger.stderr
+
+CellRanger: aggr $(foreach id,$(SAMPLE_IDS),$(id)_reanalyze/outs/analysis/tsne/2_components/projection.csv)
+.PHONY += CellRanger
+
+latest: CellRanger
