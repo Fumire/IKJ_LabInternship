@@ -44,22 +44,28 @@ figure_directory = "/BiO/Live/jwlee230/181113_spermatogenesis/figures/"
 IDs = ["NS_SW1", "NS_SW2", "NS_SW3", "NS_SW4"]
 
 
-def Total():
+def get_whole_data():
+    whole_projection = pandas.read_csv("/BiO/Live/jwlee230/181113_spermatogenesis/result/aggr/outs/analysis/tsne/2_components/projection.csv", header=0)
+
+    whole_projection["std_TSNE-1"] = scipy.stats.zscore(whole_projection["TSNE-1"])
+    whole_projection["std_TSNE-2"] = scipy.stats.zscore(whole_projection["TSNE-2"])
+
+    return whole_projection
+
+
+def draw_all():
     mpl.use("Agg")
     mpl.rcParams.update({"font.size": 30})
 
-    projections = list()
-    for ID in IDs:
-        projections.append(pandas.read_csv("/BiO/Live/jwlee230/181113_spermatogenesis/result/" + ID + "_reanalyze/outs/analysis/tsne/2_components/projection.csv", header=0))
+    projection = get_whole_data()
 
     plt.figure()
-    for data, color in zip(projections, ["C0", "C1", "C2", "C3"]):
-        plt.scatter(data["TSNE-1"], data["TSNE-2"], c=color, alpha=0.6)
+    plt.scatter(projection["std_TSNE-1"], projection["std_TSNE-2"], alpha=0.6)
 
     plt.grid(True)
     plt.title("Total")
-    plt.xlabel("TSNE-1")
-    plt.ylabel("TSNE-2")
+    plt.xlabel("Standardized TSNE-1")
+    plt.ylabel("Standardized TSNE-2")
 
     fig = plt.gcf()
     fig.set_size_inches(24, 18)
@@ -67,19 +73,53 @@ def Total():
     plt.close()
 
 
+def get_real_barcodes(ID):
+    projection = pandas.read_csv("/BiO/Live/jwlee230/181113_spermatogenesis/result/" + ID + "/outs/analysis/tsne/2_components/projection.csv", header=0)
+
+    return [barcode[:-1] + ID[-1] for barcode in projection["Barcode"]]
+
+
+def get_data_from_id(ID):
+    projection = get_whole_data()
+    return projection[numpy.isin(projection["Barcode"], get_real_barcodes(ID))]
+
+
+def draw_all_with_color():
+    mpl.use("Agg")
+    mpl.rcParams.update({"font.size": 30})
+
+    plt.figure()
+    for ID in IDs:
+        projection = get_data_from_id(ID)
+        plt.scatter(projection["std_TSNE-1"], projection["std_TSNE-2"], alpha=0.6, label=ID)
+
+    plt.grid(True)
+    plt.title("Total")
+    plt.xlabel("Standardized TSNE-1")
+    plt.ylabel("Standardized TSNE-2")
+    plt.legend()
+
+    fig = plt.gcf()
+    fig.set_size_inches(24, 18)
+    fig.savefig(figure_directory + "total_" + now + ".png")
+    plt.close()
+
+
 def tSNE_normal(ID):
     mpl.use("Agg")
     mpl.rcParams.update({"font.size": 30})
 
-    projection = pandas.read_csv("/BiO/Live/jwlee230/181113_spermatogenesis/result/" + ID + "_reanalyze/outs/analysis/tsne/2_components/projection.csv", header=0)
+    whole_projection = get_whole_data()
+
+    color = ["tab:blue" if _ else "tab:gray" for _ in numpy.isin(whole_projection["Barcode"], get_real_barcodes(ID))]
 
     plt.figure()
-    plt.scatter(projection["TSNE-1"], projection["TSNE-2"])
+    plt.scatter(whole_projection["std_TSNE-1"], whole_projection["std_TSNE-2"], c=color, alpha=0.6)
 
     plt.grid(True)
     plt.title(ID)
-    plt.xlabel("TSNE-1")
-    plt.ylabel("TSNE-2")
+    plt.xlabel("Standardized TSNE-1")
+    plt.ylabel("Standardized TSNE-2")
 
     fig = plt.gcf()
     fig.set_size_inches(24, 18)
@@ -91,61 +131,33 @@ def clustering_Kmeans_with_num(ID, num_groups):
     mpl.use("Agg")
     mpl.rcParams.update({"font.size": 30})
 
-    projection = pandas.read_csv("/BiO/Live/jwlee230/181113_spermatogenesis/result/" + ID + "_reanalyze/outs/analysis/tsne/2_components/projection.csv", header=0)
-
-    projection["std_TSNE-1"] = scipy.stats.zscore(projection["TSNE-1"])
-    projection["std_TSNE-2"] = scipy.stats.zscore(projection["TSNE-2"])
+    projection = get_data_from_id(ID)
 
     kmeans = sklearn.cluster.KMeans(n_clusters=num_groups, random_state=0, n_jobs=-1).fit(numpy.array([_ for _ in zip(projection["std_TSNE-1"], projection["std_TSNE-2"])]))
 
-    color = kmeans.fit_predict([_ for _ in zip(projection["std_TSNE-1"], projection["std_TSNE-2"])])
+    projection["group"] = kmeans.fit_predict([_ for _ in zip(projection["std_TSNE-1"], projection["std_TSNE-2"])])
 
     plt.figure()
-    plt.scatter(projection["std_TSNE-1"], projection["std_TSNE-2"], c=color)
+    plt.scatter(projection["std_TSNE-1"], projection["std_TSNE-2"], c=projection["group"])
     plt.scatter([elem[0] for elem in kmeans.cluster_centers_], [elem[1] for elem in kmeans.cluster_centers_], c="k", marker="X", s=500)
 
     plt.grid(True)
     plt.title("KMeans: " + str(num_groups))
-    plt.xlabel("Standard TSNE-1")
-    plt.ylabel("Standard TSNE-2")
+    plt.xlabel("Standardized TSNE-1")
+    plt.ylabel("Standardized TSNE-2")
 
     fig = plt.gcf()
     fig.set_size_inches(24, 18)
     fig.savefig(figure_directory + "KMeans_" + ID + "_" + str(num_groups) + "_" + now + ".png")
     plt.close()
 
+    return projection
 
-def clustering_Kmeans(ID):
-    for i in range(2, 11):
+
+def clustering_Kmeans(ID, num=10):
+    for i in range(2, num + 1):
         clustering_Kmeans_with_num(ID, i)
 
 
-def clustering_mean_shift_with_num(ID, num_groups):
-    mpl.use("Agg")
-    mpl.rcParams.update({"font.size": 30})
-
-    projection = pandas.read_csv("/BiO/Live/jwlee230/181113_spermatogenesis/result/" + ID + "_reanalyze/outs/analysis/tsne/2_components/projection.csv", header=0)
-
-    projection["std_TSNE-1"] = scipy.stats.zscore(projection["TSNE-1"])
-    projection["std_TSNE-2"] = scipy.stats.zscore(projection["TSNE-2"])
-
-    ms = sklearn.cluster.MeanShift(n_jobs=-1)
-    color = ms.fit_predict(numpy.array([_ for _ in zip(projection["std_TSNE-1"], projection["std_TSNE-2"])]))
-
-    plt.figure()
-    plt.scatter(projection["std_TSNE-1"], projection["std_TSNE-2"], c=color)
-    plt.scatter([elem[0] for elem in ms.cluster_centers_], [elem[1] for elem in ms.cluster_centers_], c="k", marker="X", s=500)
-
-    plt.grid(True)
-    plt.title("KMeans: " + str(num_groups))
-    plt.xlabel("Standard TSNE-1")
-    plt.ylabel("Standard TSNE-2")
-
-    fig = plt.gcf()
-    fig.set_size_inches(24, 18)
-    fig.savefig(figure_directory + "MeanShift_" + ID + "_" + str(num_groups) + "_" + now + ".png")
-    plt.close()
-
-
 if __name__ == "__main__":
-    clustering_mean_shift_with_num("NS_SW1", 3)
+    clustering_Kmeans_with_num("NS_SW1", 100)
