@@ -105,16 +105,18 @@ def draw_all_with_color():
     plt.close()
 
 
-def tSNE_normal(ID):
+def draw_tSNE(ID):
     mpl.use("Agg")
     mpl.rcParams.update({"font.size": 30})
 
     whole_projection = get_whole_data()
 
-    color = ["tab:blue" if _ else "tab:gray" for _ in numpy.isin(whole_projection["Barcode"], get_real_barcodes(ID))]
+    wanted = whole_projection[numpy.isin(whole_projection["Barcode"], get_real_barcodes(ID))]
+    unwanted = whole_projection[numpy.invert(numpy.isin(whole_projection["Barcode"], get_real_barcodes(ID)))]
 
     plt.figure()
-    plt.scatter(whole_projection["std_TSNE-1"], whole_projection["std_TSNE-2"], c=color, alpha=0.6)
+    plt.scatter(unwanted["std_TSNE-1"], unwanted["std_TSNE-2"], c="tab:gray", alpha=0.6)
+    plt.scatter(wanted["std_TSNE-1"], wanted["std_TSNE-2"], c="tab:blue", alpha=1)
 
     plt.grid(True)
     plt.title(ID)
@@ -155,9 +157,8 @@ def clustering_Kmeans_with_num(ID, num_groups):
 
 
 def clustering_Kmeans(ID, num=10):
-    for i in range(2, num + 1):
-        clustering_Kmeans_with_num(ID, i)
+    return [clustering_Kmeans_with_num(ID, i) for i in range(2, num + 1)]
 
 
 if __name__ == "__main__":
-    clustering_Kmeans_with_num("NS_SW1", 100)
+    clustering_Kmeans_with_num("NS_SW1", 10)
