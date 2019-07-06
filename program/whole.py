@@ -1,3 +1,4 @@
+import multiprocessing
 import os
 import time
 import csv
@@ -8,11 +9,12 @@ import pandas
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import scipy
+import pprint
 import sklearn.cluster
 
 
 def get_matrix(filename):
-    return scipy.io.mmread(filename)
+    return pandas.DataFrame(scipy.io.mmread(filename).toarray())
 
 
 def get_feature_ids(filename):
@@ -31,12 +33,20 @@ def get_barcodes(filename):
     return [row[0] for row in csv.reader(gzip.open(filename, mode="rt"), delimiter="\t")]
 
 
-def get_all(dirname):
+data = dict()
+
+
+def get_all(ID):
+    if ID in data:
+        return data[ID]
+    dirname = "/BiO/Live/jwlee230/181113_spermatogenesis/result/" + ID + "/outs/filtered_feature_bc_matrix"
     matrix_dir = os.path.join(dirname, "matrix.mtx.gz")
     features_path = os.path.join(dirname, "features.tsv.gz")
     barcodes_path = os.path.join(dirname, "barcodes.tsv.gz")
 
-    return {"matrix": get_matrix(matrix_dir), "feature_ids": get_feature_ids(features_path), "gene_name": get_gene_name(features_path), "feature_type": get_feature_type(features_path), "barcodes": get_barcodes(barcodes_path)}
+    data[ID] = {"matrix": get_matrix(matrix_dir), "feature_ids": get_feature_ids(features_path), "gene_name": get_gene_name(features_path), "feature_type": get_feature_type(features_path), "barcodes": get_barcodes(barcodes_path)}
+
+    return data[ID]
 
 
 now = time.strftime("%m%d%H%M%S")
@@ -129,6 +139,13 @@ def draw_tSNE(ID):
     plt.close()
 
 
+def make_cluster_dict(cells):
+    given = dict()
+    for i in range(max(cells) + 1):
+        given[i] = list(filter(lambda x: cells[x] == i, list(range(len(cells)))))
+    return given
+
+
 def clustering_Kmeans_with_num(ID, num_groups):
     mpl.use("Agg")
     mpl.rcParams.update({"font.size": 30})
@@ -142,6 +159,8 @@ def clustering_Kmeans_with_num(ID, num_groups):
     plt.figure()
     plt.scatter(projection["std_TSNE-1"], projection["std_TSNE-2"], c=projection["group"])
     plt.scatter([elem[0] for elem in kmeans.cluster_centers_], [elem[1] for elem in kmeans.cluster_centers_], c="k", marker="X", s=500)
+    for i, loc in enumerate(kmeans.cluster_centers_):
+        plt.text(loc[0] + 0.05, loc[1], str(i), fontsize=30, bbox=dict(color='white', alpha=0.8))
 
     plt.grid(True)
     plt.title("KMeans: " + str(num_groups))
@@ -153,12 +172,71 @@ def clustering_Kmeans_with_num(ID, num_groups):
     fig.savefig(figure_directory + "KMeans_" + ID + "_" + str(num_groups) + "_" + now + ".png")
     plt.close()
 
-    return projection
+    return (make_cluster_dict(projection["group"]), kmeans.cluster_centers_)
 
 
 def clustering_Kmeans(ID, num=10):
     return [clustering_Kmeans_with_num(ID, i) for i in range(2, num + 1)]
 
 
+def gene_in_cells(ID, cell_numbers=None):
+    all_data = get_all(ID)
+    all_data["matrix"].index = all_data["gene_name"]
+
+    if cell_numbers is None:
+        return all_data["matrix"]
+
+    all_data["matrix"].drop(all_data["matrix"].columns[list(filter(lambda x: x not in list(cell_numbers), list(range(all_data["matrix"].shape[1]))))], axis=1, inplace=True)
+
+    return all_data["matrix"]
+
+
+def gene_sum_in_cells(ID, cell_numbers=None, num_gene=None):
+    return gene_in_cells(ID, cell_numbers).sum(axis=1).sort_values(ascending=False)[:-1 if num_gene is None else num_gene]
+
+
+def gene_mean_in_cells(ID, cell_numbers=None, num_gene=None, text=True):
+    return gene_in_cells(ID, cell_numbers).mean(axis=1, numeric_only=True).sort_values(ascending=False)[:-1 if num_gene is None else num_gene]
+
+
+def stacked_bar_gene_sum(ID, cluster_function, num_groups=10, num_gene=5):
+    allowed_functions = [clustering_Kmeans_with_num]
+    if cluster_function not in allowed_functions:
+        print("cluster_function must be in", allowed_functions)
+        return
+
+    cluster_group, cluster_centers = cluster_function(ID, num_groups)
+
+    gene_list = numpy.swapaxes([list(gene_sum_in_cells(ID, cluster_group[i], num_gene)) for i in cluster_group], 0, 1)
+    gene_name = numpy.swapaxes([list(gene_sum_in_cells(ID, cluster_group[i], num_gene).index) for i in cluster_group], 0, 1)
+
+    pprint.pprint(gene_list)
+    pprint.pprint(gene_name)
+
+    mpl.use("Agg")
+    mpl.rcParams.update({"font.size": 30})
+
+    plt.figure()
+    plt.bar(numpy.arange(num_groups), gene_list[0], 0.35)
+    for i in range(1, num_gene):
+        plt.bar(numpy.arange(num_groups), gene_list[i], 0.35, bottom=numpy.sum(numpy.array([gene_list[j] for j in range(i)]), axis=0))
+
+    gene_tick = numpy.amax(numpy.sum(gene_list, axis=0)) / 5 / num_gene
+    for i in range(num_groups):
+        for j in range(num_gene):
+            plt.text(i + 0.05, (j + 1) * gene_tick, gene_name[j][i], fontsize=10, bbox=dict(color="white", alpha=0.3))
+
+    plt.grid(True)
+    plt.title("Stacked Bar " + ID + " with " + str(num_gene) + " Gene")
+    plt.xlabel("Group")
+    plt.ylabel("# of Gene")
+    plt.xticks(numpy.arange(num_groups), list(range(num_groups)))
+
+    fig = plt.gcf()
+    fig.set_size_inches(24, 18)
+    fig.savefig(figure_directory + "StackedBar_" + ID + "_" + str(num_groups) + "_" + str(num_gene) + "_" + now + ".png")
+    plt.close()
+
+
 if __name__ == "__main__":
-    clustering_Kmeans_with_num("NS_SW1", 10)
+    stacked_bar_gene_sum("NS_SW1", clustering_Kmeans_with_num)
