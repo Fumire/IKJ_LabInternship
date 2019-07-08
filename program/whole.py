@@ -186,25 +186,39 @@ def gene_in_cells(ID, cell_numbers=None):
     if cell_numbers is None:
         return all_data["matrix"]
 
-    all_data["matrix"].drop(all_data["matrix"].columns[list(filter(lambda x: x not in list(cell_numbers), list(range(all_data["matrix"].shape[1]))))], axis=1, inplace=True)
+    data = all_data["matrix"].copy()
 
-    return all_data["matrix"]
+    data.drop(all_data["matrix"].columns[list(filter(lambda x: x not in cell_numbers, list(range(all_data["matrix"].shape[1]))))], axis=1, inplace=True)
+
+    return data
 
 
 def gene_sum_in_cells(ID, cell_numbers=None, num_gene=None):
-    return gene_in_cells(ID, cell_numbers).sum(axis=1).sort_values(ascending=False)[:-1 if num_gene is None else num_gene]
+    data = gene_in_cells(ID, cell_numbers).sum(axis=1).sort_values(ascending=False)
+    data = data[data > 0]
+
+    return data if num_gene is None else data[:num_gene]
 
 
 def gene_mean_in_cells(ID, cell_numbers=None, num_gene=None, text=True):
-    return gene_in_cells(ID, cell_numbers).mean(axis=1, numeric_only=True).sort_values(ascending=False)[:-1 if num_gene is None else num_gene]
+    data = gene_in_cells(ID, cell_numbers).mean(axis=1).sort_values(ascending=False)
+    data = data[data > 0]
+
+    return data if num_gene is None else data[:num_gene]
 
 
-def stacked_bar_gene_sum(ID, cluster_function, num_groups=10, num_gene=5):
+def check_valid_function(cluster_function):
     allowed_functions = [clustering_Kmeans_with_num]
     if cluster_function not in allowed_functions:
         print("cluster_function must be in", allowed_functions)
-        return
+        return False
+    else:
+        return True
 
+
+def stacked_bar_gene_sum(ID, cluster_function, num_groups=10, num_gene=5):
+    if not check_valid_function(cluster_function):
+        return
     cluster_group, cluster_centers = cluster_function(ID, num_groups)
 
     gene_list = numpy.swapaxes([list(gene_sum_in_cells(ID, cluster_group[i], num_gene)) for i in cluster_group], 0, 1)
@@ -238,5 +252,19 @@ def stacked_bar_gene_sum(ID, cluster_function, num_groups=10, num_gene=5):
     plt.close()
 
 
+def heatmap_sum(ID, cluster_function, num_groups=10, num_gene=None):
+    if not check_valid_function(cluster_function):
+        return
+
+    cluster_group, cluster_centers = cluster_function(ID, num_groups)
+
+    gene_list = [gene_sum_in_cells(ID, cluster_group[i], num_gene) for i in cluster_group]
+    gene_name = [gene_sum_in_cells(ID, cluster_group[i], num_gene).index for i in cluster_group]
+
+    pprint.pprint(gene_list)
+    pprint.pprint(gene_name)
+
+
 if __name__ == "__main__":
     stacked_bar_gene_sum("NS_SW1", clustering_Kmeans_with_num)
+    # heatmap_sum("NS_SW1", clustering_Kmeans_with_num)
