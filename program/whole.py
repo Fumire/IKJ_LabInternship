@@ -288,19 +288,42 @@ def stacked_bar_gene_mean(ID, cluster_function, num_groups=10, num_gene=5):
     plt.close()
 
 
-def heatmap_sum(ID, cluster_function, num_groups=10, num_gene=None):
+def heatmap_sum_top(ID, cluster_function, num_groups=10, num_gene=None):
     if not check_valid_function(cluster_function):
         return
 
     cluster_group, cluster_centers = cluster_function(ID, num_groups)
 
-    gene_list = [gene_sum_in_cells(ID, cluster_group[i], num_gene) for i in cluster_group]
-    gene_name = [gene_sum_in_cells(ID, cluster_group[i], num_gene).index for i in cluster_group]
+    gene_name = list(gene_sum_in_cells(ID).index)
+    if num_gene is not None:
+        gene_name = gene_name[:num_gene]
+    gene_name = sorted(gene_name)
 
-    pprint.pprint(gene_list)
+    gene_list = [gene_sum_in_cells(ID, cluster_group) for i in cluster_group]
+    for i, data in enumerate(gene_list):
+        data.drop(labels=list(filter(lambda x: x not in gene_name, list(data.index))))
+        data = data.sort_index()
+        gene_list[i] = data.copy()
+        pprint.pprint(data, gene_list[i])
+
     pprint.pprint(gene_name)
+    pprint.pprint(gene_list)
+
+    mpl.use("Agg")
+    mpl.rcParams.update({"font.size": 30})
+
+    plt.figure()
+    plt.imshow(gene_list)
+
+    plt.title("HeatMap _ " + ID + "_" + str(num_gene) + " Genes")
+    plt.xlabel("Genes")
+    plt.ylabel("Groups")
+
+    fig = plt.gcf()
+    fig.set_size_inches(24, 18)
+    fig.savefig(figure_directory + "HeatMap_" + ID + "_" + str(num_groups) + "_" + str(num_gene) + "_" + now + ".png")
+    plt.close()
 
 
 if __name__ == "__main__":
-    stacked_bar_gene_mean("NS_SW1", clustering_Kmeans_with_num)
-    # heatmap_sum("NS_SW1", clustering_Kmeans_with_num)
+    heatmap_sum_top("NS_SW1", clustering_Kmeans_with_num, num_gene=10)
