@@ -243,6 +243,42 @@ def stacked_bar_gene_sum(ID, cluster_function, num_groups=10, num_gene=5):
     plt.grid(True)
     plt.title("Stacked Bar " + ID + " with " + str(num_gene) + " Gene")
     plt.xlabel("Group")
+    plt.ylabel("# of Genes")
+    plt.xticks(numpy.arange(num_groups), list(range(num_groups)))
+
+    fig = plt.gcf()
+    fig.set_size_inches(24, 18)
+    fig.savefig(figure_directory + "StackedBar_" + ID + "_" + str(num_groups) + "_" + str(num_gene) + "_" + now + ".png")
+    plt.close()
+
+
+def stacked_bar_gene_mean(ID, cluster_function, num_groups=10, num_gene=5):
+    if not check_valid_function(cluster_function):
+        return
+    cluster_group, cluster_centers = cluster_function(ID, num_groups)
+
+    gene_list = numpy.swapaxes([list(gene_mean_in_cells(ID, cluster_group[i], num_gene)) for i in cluster_group], 0, 1)
+    gene_name = numpy.swapaxes([list(gene_mean_in_cells(ID, cluster_group[i], num_gene).index) for i in cluster_group], 0, 1)
+
+    pprint.pprint(gene_list)
+    pprint.pprint(gene_name)
+
+    mpl.use("Agg")
+    mpl.rcParams.update({"font.size": 30})
+
+    plt.figure()
+    plt.bar(numpy.arange(num_groups), gene_list[0], 0.35)
+    for i in range(1, num_gene):
+        plt.bar(numpy.arange(num_groups), gene_list[i], 0.35, bottom=numpy.sum(numpy.array([gene_list[j] for j in range(i)]), axis=0))
+
+    gene_tick = numpy.amax(numpy.sum(gene_list, axis=0)) / 5 / num_gene
+    for i in range(num_groups):
+        for j in range(num_gene):
+            plt.text(i + 0.05, (j + 1) * gene_tick, gene_name[j][i], fontsize=10, bbox=dict(color="white", alpha=0.3))
+
+    plt.grid(True)
+    plt.title("Stacked Bar " + ID + " with " + str(num_gene) + " Genes")
+    plt.xlabel("Group")
     plt.ylabel("# of Gene")
     plt.xticks(numpy.arange(num_groups), list(range(num_groups)))
 
@@ -266,5 +302,5 @@ def heatmap_sum(ID, cluster_function, num_groups=10, num_gene=None):
 
 
 if __name__ == "__main__":
-    stacked_bar_gene_sum("NS_SW1", clustering_Kmeans_with_num)
+    stacked_bar_gene_mean("NS_SW1", clustering_Kmeans_with_num)
     # heatmap_sum("NS_SW1", clustering_Kmeans_with_num)
