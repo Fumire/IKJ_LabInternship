@@ -288,7 +288,7 @@ def stacked_bar_gene_mean(ID, cluster_function, num_groups=10, num_gene=5):
     plt.close()
 
 
-def heatmap_sum_top(ID, cluster_function, num_groups=10, num_gene=None):
+def heatmap_sum_top(ID, cluster_function, num_groups=10, num_gene=None, show_text=True):
     if not check_valid_function(cluster_function):
         return
 
@@ -299,12 +299,12 @@ def heatmap_sum_top(ID, cluster_function, num_groups=10, num_gene=None):
         gene_name = gene_name[:num_gene]
     gene_name = sorted(gene_name)
 
-    gene_list = [gene_sum_in_cells(ID, cluster_group) for i in cluster_group]
-    for i, data in enumerate(gene_list):
-        data.drop(labels=list(filter(lambda x: x not in gene_name, list(data.index))))
-        data = data.sort_index()
-        gene_list[i] = data.copy()
-        pprint.pprint(data, gene_list[i])
+    pre_gene_list = [gene_sum_in_cells(ID, cluster_group[i]) for i in cluster_group]
+    gene_list = [None for _ in range(len(pre_gene_list))]
+    for i, data in enumerate(pre_gene_list):
+        data.drop(labels=list(filter(lambda x: x not in gene_name, list(data.index))), inplace=True)
+        data.sort_index(inplace=True)
+        gene_list[i] = data.tolist()[:]
 
     pprint.pprint(gene_name)
     pprint.pprint(gene_list)
@@ -318,6 +318,14 @@ def heatmap_sum_top(ID, cluster_function, num_groups=10, num_gene=None):
     plt.title("HeatMap _ " + ID + "_" + str(num_gene) + " Genes")
     plt.xlabel("Genes")
     plt.ylabel("Groups")
+    plt.xticks(numpy.arange(len(gene_name)), gene_name)
+    plt.yticks(numpy.arange(num_groups), list(range(num_groups)))
+
+    threshold = numpy.amax([numpy.amax(i) for i in gene_list]) / 2
+    for i in range(num_gene):
+        for j in range(num_groups):
+            if show_text:
+                plt.text(j, i, str(gene_list[i][j]), color='white' if gene_list[i][j] < threshold else 'black', fontsize=10)
 
     fig = plt.gcf()
     fig.set_size_inches(24, 18)
@@ -326,4 +334,4 @@ def heatmap_sum_top(ID, cluster_function, num_groups=10, num_gene=None):
 
 
 if __name__ == "__main__":
-    heatmap_sum_top("NS_SW1", clustering_Kmeans_with_num, num_gene=10)
+    pass
