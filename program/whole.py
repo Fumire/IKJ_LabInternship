@@ -299,9 +299,8 @@ def heatmap_sum_top(ID, cluster_function, num_groups=10, num_gene=None, show_tex
         gene_name = gene_name[:num_gene]
     gene_name = sorted(gene_name)
 
-    pre_gene_list = [gene_sum_in_cells(ID, cluster_group[i]) for i in cluster_group]
-    gene_list = [None for _ in range(len(pre_gene_list))]
-    for i, data in enumerate(pre_gene_list):
+    gene_list = [gene_sum_in_cells(ID, cluster_group[i]) for i in cluster_group]
+    for i, data in enumerate(gene_list):
         data.drop(labels=list(filter(lambda x: x not in gene_name, list(data.index))), inplace=True)
         data.sort_index(inplace=True)
         gene_list[i] = data.tolist()[:]
@@ -322,14 +321,58 @@ def heatmap_sum_top(ID, cluster_function, num_groups=10, num_gene=None, show_tex
     plt.yticks(numpy.arange(num_groups), list(range(num_groups)))
 
     threshold = numpy.amax([numpy.amax(i) for i in gene_list]) / 2
-    for i in range(num_gene):
+    for i in range(len(gene_name)):
         for j in range(num_groups):
             if show_text:
                 plt.text(j, i, str(gene_list[i][j]), color='white' if gene_list[i][j] < threshold else 'black', fontsize=10)
 
     fig = plt.gcf()
     fig.set_size_inches(24, 18)
-    fig.savefig(figure_directory + "HeatMap_" + ID + "_" + str(num_groups) + "_" + str(num_gene) + "_" + now + ".png")
+    fig.savefig(figure_directory + "HeatMap_" + ID + "_" + str(num_groups) + "_" + str(len(gene_name)) + "_" + now + ".png")
+    plt.close()
+
+
+def heatmap_mean_top(ID, cluster_function, num_groups=10, num_gene=None, show_text=True):
+    if not check_valid_function(cluster_function):
+        return
+
+    cluster_group, cluster_centers = cluster_function(ID, num_groups)
+
+    gene_name = list(gene_mean_in_cells(ID).index)
+    if num_gene is not None:
+        gene_name = gene_name[:num_gene]
+    gene_name = sorted(gene_name)
+
+    gene_list = [gene_mean_in_cells(ID, cluster_group[i]) for i in cluster_group]
+    for i, data in enumerate(gene_list):
+        data.drop(labels=list(filter(lambda x: x not in gene_name, list(data.index))), inplace=True)
+        data.sort_index(inplace=True)
+        gene_list[i] = data.tolist()[:]
+
+    pprint.pprint(gene_name)
+    pprint.pprint(gene_list)
+
+    mpl.use("Agg")
+    mpl.rcParams.update({"font.size": 30})
+
+    plt.figure()
+    plt.imshow(gene_list)
+
+    plt.title("HeatMap_" + ID + "_" + str(num_gene) + " Genes")
+    plt.xlabel("Genes")
+    plt.ylabel("Groups")
+    plt.xticks(numpy.arange(len(gene_name)), gene_name)
+    plt.yticks(numpy.arange(num_groups), list(range(num_groups)))
+
+    threshold = numpy.amax([numpy.amax(i) for i in gene_list]) / 2
+    for i in range(len(gene_name)):
+        for j in range(num_groups):
+            if show_text:
+                plt.text(j, i, str(gene_list[i][j]), color='white' if gene_list[i][j] < threshold else 'black', fontsize=10)
+
+    fig = plt.gcf()
+    fig.set_size_inches(24, 18)
+    fig.savefig(figure_directory + "HeatMap_" + ID + "_" + str(num_groups) + "_" + str(len(gene_name)) + "_" + now + ".png")
     plt.close()
 
 
