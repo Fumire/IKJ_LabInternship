@@ -376,5 +376,38 @@ def heatmap_mean_top(ID, cluster_function, num_groups=10, num_gene=None, show_te
     plt.close()
 
 
+def heatmap_given_genes(ID, cluster_function, gene_name=["Id4", "Gfra1", "Zbtb16", "Stra8", "Rhox13", "Sycp3", "Dmc1", "Piwil1", "Pgk2", "Acr", "Gapdhs", "Prm1"], num_groups=10):
+    if not check_valid_function(cluster_function):
+        return
+
+    cluster_group, cluster_centers = cluster_function(ID, num_groups)
+
+    gene_list = [gene_mean_in_cells(ID, cluster_group[i]) for i in cluster_group]
+    for i, data in enumerate(gene_list):
+        data = data.add(pandas.Series([0 for _ in gene_name], index=gene_name))
+        data.drop(labels=list(filter(lambda x: x not in gene_name, list(data.index))), inplace=True)
+        data.sort_index(inplace=True)
+        gene_list[i] = data.tolist()[:]
+
+    pprint.pprint(gene_name)
+
+    mpl.use("Agg")
+    mpl.rcParams.update({"font.size": 30})
+
+    plt.figure()
+    plt.imshow(gene_list)
+
+    plt.title("Heatmap_" + ID + "_" + str(len(gene_name)) + " Genes")
+    plt.xlabel("Genes")
+    plt.ylabel("Groups")
+    plt.xticks(numpy.arange(len(gene_name)), gene_name, fontsize=20, rotation=90)
+    plt.yticks(numpy.arange(num_groups), list(range(num_groups)))
+
+    fig = plt.gcf()
+    fig.set_size_inches(24, 18)
+    fig.savefig(figure_directory + "HeatMap_" + ID + "_" + str(num_groups) + "_" + str(len(gene_name)) + now + ".png")
+    plt.close()
+
+
 if __name__ == "__main__":
-    pass
+    heatmap_given_genes("NS_SW1", clustering_Kmeans_with_num, num_groups=20)
