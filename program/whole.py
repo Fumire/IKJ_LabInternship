@@ -1,3 +1,4 @@
+import functools
 import multiprocessing
 import os
 import time
@@ -140,6 +141,7 @@ def draw_tSNE(ID):
 
 
 def make_cluster_dict(cells):
+    cells = cells.tolist()
     given = dict()
     for i in range(max(cells) + 1):
         given[i] = list(filter(lambda x: cells[x] == i, list(range(len(cells)))))
@@ -376,7 +378,17 @@ def heatmap_mean_top(ID, cluster_function, num_groups=10, num_gene=None, show_te
     plt.close()
 
 
-def heatmap_given_genes(ID, cluster_function, gene_name=["Id4", "Gfra1", "Zbtb16", "Stra8", "Rhox13", "Sycp3", "Dmc1", "Piwil1", "Pgk2", "Acr", "Gapdhs", "Prm1"], num_groups=10):
+def sort_index(gene_list):
+    group_order = [(numpy.argmax(gene_list[i]), gene_list[i][numpy.argmax(gene_list[i])], i) for i in range(len(gene_list))]
+
+    group_order.sort()
+
+    group_order = [c for a, b, c in group_order]
+
+    return (group_order, [gene_list[i][:] for i in group_order])
+
+
+def heatmap_given_genes(ID, cluster_function, gene_name=["Id4", "Gfra1", "Zbtb16", "Stra8", "Rhox13", "Sycp3", "Dmc1", "Piwil1", "Pgk2", "Acr", "Gapdhs", "Prm1"], num_groups=50):
     if not check_valid_function(cluster_function):
         return
 
@@ -384,12 +396,12 @@ def heatmap_given_genes(ID, cluster_function, gene_name=["Id4", "Gfra1", "Zbtb16
 
     gene_list = [gene_mean_in_cells(ID, cluster_group[i]) for i in cluster_group]
     for i, data in enumerate(gene_list):
-        data = data.add(pandas.Series([0 for _ in gene_name], index=gene_name))
+        data = data.add(pandas.Series(0, index=gene_name), fill_value=0)
         data.drop(labels=list(filter(lambda x: x not in gene_name, list(data.index))), inplace=True)
         data.sort_index(inplace=True)
-        gene_list[i] = data.tolist()[:]
+        gene_list[i] = scipy.stats.zscore(data.tolist())
 
-    pprint.pprint(gene_name)
+    group_order, gene_list = sort_index(gene_list)
 
     mpl.use("Agg")
     mpl.rcParams.update({"font.size": 30})
@@ -400,14 +412,33 @@ def heatmap_given_genes(ID, cluster_function, gene_name=["Id4", "Gfra1", "Zbtb16
     plt.title("Heatmap_" + ID + "_" + str(len(gene_name)) + " Genes")
     plt.xlabel("Genes")
     plt.ylabel("Groups")
-    plt.xticks(numpy.arange(len(gene_name)), gene_name, fontsize=20, rotation=90)
-    plt.yticks(numpy.arange(num_groups), list(range(num_groups)))
+    plt.xticks(numpy.arange(len(gene_name)), gene_name, fontsize=10, rotation=90)
+    plt.yticks(numpy.arange(num_groups), group_order, fontsize=10)
 
     fig = plt.gcf()
-    fig.set_size_inches(24, 18)
+    fig.set_size_inches(24, max(18, 0.2 * num_groups))
     fig.savefig(figure_directory + "HeatMap_" + ID + "_" + str(num_groups) + "_" + str(len(gene_name)) + now + ".png")
     plt.close()
 
+    return (group_order, cluster_centers)
+
+
+def get_common_genes(ID, cluster_function, num_groups=10):
+    if not check_valid_function:
+        return
+
+    cluster_group, cluster_centers = cluster_function(ID, num_groups)
+
+    gene_list = [list(gene_mean_in_cells(ID, cluster_group[i]).index) for i in cluster_group]
+
+    common_gene = set(gene_list[0])
+    for gene in gene_list[1:]:
+        common_gene = common_gene & set(gene)
+
+    pprint.pprint(common_gene)
+    print(len(common_gene))
+
 
 if __name__ == "__main__":
-    heatmap_given_genes("NS_SW1", clustering_Kmeans_with_num, num_groups=20)
+    heatmap_given_genes("NS_SW1", clustering_Kmeans_with_num)
+    exit()
