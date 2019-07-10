@@ -55,13 +55,56 @@ figure_directory = "/BiO/Live/jwlee230/181113_spermatogenesis/figures/"
 IDs = ["NS_SW1", "NS_SW2", "NS_SW3", "NS_SW4"]
 
 
-def get_whole_data():
-    whole_projection = pandas.read_csv("/BiO/Live/jwlee230/181113_spermatogenesis/result/aggr/outs/analysis/tsne/2_components/projection.csv", header=0)
+def select_highly_variable_genes(data, show=True):
+    means = data.mean(axis=1).to_numpy()
+    variances = data.var(axis=1).to_numpy()
+    cv2 = numpy.divide(variances, numpy.square(means))
 
-    whole_projection["std_TSNE-1"] = scipy.stats.zscore(whole_projection["TSNE-1"])
-    whole_projection["std_TSNE-2"] = scipy.stats.zscore(whole_projection["TSNE-2"])
+    pprint.pprint(means)
+    pprint.pprint(variances)
 
-    return whole_projection
+    if show:
+        mpl.use("Agg")
+        mpl.rcParams.update({"font.size": 30})
+
+        plt.figure()
+        plt.scatter(numpy.log(means), numpy.log(cv2), alpha=0.6)
+
+        plt.grid(True)
+        plt.xlabel("log(means)")
+        plt.ylabel("log(cv2)")
+
+        fig = plt.gcf()
+        fig.set_size_inches(24, 18)
+        fig.savefig(figure_directory + "HighlyVariableGene_" + now + ".png")
+        plt.close()
+
+    exit()
+    return data
+
+
+def get_whole_data(genes=None):
+    data = pandas.DataFrame(scipy.io.mmread("/BiO/Live/jwlee230/181113_spermatogenesis/result/aggr/outs/filtered_feature_bc_matrix/matrix.mtx").toarray())
+
+    if genes is None:
+        data = select_highly_variable_genes(data)
+    else:
+        data["gene"] = get_gene_name("/BiO/Live/jwlee230/181113_spermatogenesis/result/aggr/outs/filtered_feature_bc_matrix/features.tsv.gz")
+        data = data[data["gene"].isin(genes)]
+        del data["gene"]
+
+    data = numpy.swapaxes(data.to_numpy(), 1, 0)
+
+    data = numpy.swapaxes(sklearn.manifold.TSNE(n_components=2, random_state=0).fit_transform(data), 1, 0)
+
+    projection = dict()
+    projection["Barcode"] = get_barcodes("/BiO/Live/jwlee230/181113_spermatogenesis/result/aggr/outs/filtered_feature_bc_matrix/barcodes.tsv.gz")
+    projection["std_TSNE-1"] = scipy.stats.zscore(data[0])
+    projection["std_TSNE-2"] = scipy.stats.zscore(data[1])
+
+    projection = pandas.DataFrame.from_dict(projection)
+
+    return projection
 
 
 def draw_all():
@@ -420,7 +463,29 @@ def heatmap_given_genes(ID, cluster_function, gene_name=["Id4", "Gfra1", "Zbtb16
     fig.savefig(figure_directory + "HeatMap_" + ID + "_" + str(num_groups) + "_" + str(len(gene_name)) + now + ".png")
     plt.close()
 
-    return (group_order, cluster_centers)
+    return (cluster_group, group_order, cluster_centers)
+
+
+def pseudotime(ID, cluster_function, num_groups=10):
+    if not check_valid_function:
+        return
+
+    cluster_group, group_order, cluster_centers = heatmap_given_genes(ID, cluster_function, num_groups=num_groups)
+    projection = get_data_from_id(ID)
+
+    mpl.use("Agg")
+    mpl.rcParams.update({"font.size": 30})
+
+    plt.figure()
+    for i in cluster_group:
+        plt.scatter(projection["std_TSNE-1"].iloc[cluster_group[i]], projection["std_TSNE-2"].iloc[cluster_group[i]], c=[i for _ in range(projection["std_TSNE-1"].iloc[cluster_group[i]].size)])
+    for i in range(1, len(cluster_centers)):
+        plt.arrow(cluster_centers[group_order[i - 1]][0], cluster_centers[group_order[i - 1]][1], cluster_centers[group_order[i]][0] - cluster_centers[group_order[i - 1]][0], cluster_centers[group_order[i]][1] - cluster_centers[group_order[i - 1]][1], width=0.05, edgecolor=None, linestyle=":")
+
+    fig = plt.gcf()
+    fig.set_size_inches(24, 18)
+    fig.savefig(figure_directory + "Arrow_" + ID + "_" + str(num_groups) + "_" + now + ".png")
+    plt.close()
 
 
 def get_common_genes(ID, cluster_function, num_groups=10):
@@ -440,5 +505,4 @@ def get_common_genes(ID, cluster_function, num_groups=10):
 
 
 if __name__ == "__main__":
-    heatmap_given_genes("NS_SW1", clustering_Kmeans_with_num)
-    exit()
+    pseudotime("NS_SW1", clustering_Kmeans_with_num, num_groups=10)
