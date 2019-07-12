@@ -1,4 +1,6 @@
 import multiprocessing
+import hashlib
+import json
 import os
 import time
 import csv
@@ -62,6 +64,7 @@ def select_highly_variable_genes(raw_data, show=True, datum_point=95):
     unselected = data.loc[(data["variances"] < numpy.percentile(data["variances"], datum_point)) | (data["means"] < numpy.percentile(data["means"], datum_point))]
 
     raw_data = raw_data.iloc[selected.index]
+    print(raw_data.shape)
 
     if show:
         mpl.use("Agg")
@@ -72,7 +75,7 @@ def select_highly_variable_genes(raw_data, show=True, datum_point=95):
         plt.scatter(numpy.log(unselected["means"]), numpy.log(unselected["variances"]), c="red", alpha=0.6, label="Unselected")
 
         plt.grid(True)
-        plt.title("Genes: " + str(datum_point) + "%")
+        plt.title(str(selected.shape[0]) + " Genes: " + str(datum_point) + "%")
         plt.xlabel("log(means)")
         plt.ylabel("log(variances)")
         plt.legend()
@@ -85,7 +88,19 @@ def select_highly_variable_genes(raw_data, show=True, datum_point=95):
     return raw_data
 
 
+whole_data = dict()
+
+
 def get_whole_data(genes=None):
+    def make_md5(data):
+        if data is None:
+            return hashlib.md5("".encode("utf-8")).hexdigest()
+        else:
+            return hashlib.md5(json.dumps(data.encode("utf-8"))).hexdigest()
+
+    if make_md5(genes) in whole_data:
+        return whole_data[make_md5(genes)]
+
     data = pandas.DataFrame(scipy.io.mmread("/BiO/Live/jwlee230/181113_spermatogenesis/result/aggr/outs/filtered_feature_bc_matrix/matrix.mtx").toarray())
 
     if genes is None:
@@ -95,7 +110,9 @@ def get_whole_data(genes=None):
         data = data[data["gene"].isin(genes)]
         del data["gene"]
 
-    data = numpy.swapaxes(data.to_numpy(), 1, 0)
+    data = sklearn.decomposition.PCA(random_state=0, n_components="mle").fit_transform(numpy.swapaxes(data.values, 0, 1))
+    print(data)
+    print(len(data), len(data[0]))
 
     data = numpy.swapaxes(sklearn.manifold.TSNE(n_components=2, random_state=0).fit_transform(data), 1, 0)
 
@@ -105,6 +122,8 @@ def get_whole_data(genes=None):
     projection["std_TSNE-2"] = scipy.stats.zscore(data[1])
 
     projection = pandas.DataFrame.from_dict(projection)
+
+    whole_data[make_md5(genes)] = projection
 
     return projection
 
@@ -247,7 +266,7 @@ def gene_sum_in_cells(ID, cell_numbers=None, num_gene=None):
     return data if num_gene is None else data[:num_gene]
 
 
-def gene_mean_in_cells(ID, cell_numbers=None, num_gene=None, text=True):
+def gene_mean_in_cells(ID, cell_numbers=None, num_gene=100, text=True):
     data = gene_in_cells(ID, cell_numbers).mean(axis=1).sort_values(ascending=False)
     data = data[data > 0]
 
@@ -335,6 +354,16 @@ def stacked_bar_gene_mean(ID, cluster_function, num_groups=10, num_gene=5):
     plt.close()
 
 
+def sort_index(gene_list):
+    group_order = [(numpy.argmax(gene_list[i]), gene_list[i][numpy.argmax(gene_list[i])], i) for i in range(len(gene_list))]
+
+    group_order.sort()
+
+    group_order = [c for a, b, c in group_order]
+
+    return (group_order, [gene_list[i][:] for i in group_order])
+
+
 def heatmap_sum_top(ID, cluster_function, num_groups=10, num_gene=None, show_text=True):
     if not check_valid_function(cluster_function):
         return
@@ -346,11 +375,11 @@ def heatmap_sum_top(ID, cluster_function, num_groups=10, num_gene=None, show_tex
         gene_name = gene_name[:num_gene]
     gene_name = sorted(gene_name)
 
-    gene_list = [gene_sum_in_cells(ID, cluster_group[i]) for i in cluster_group]
+    group_order, gene_list = sort_index([gene_sum_in_cells(ID, cluster_group[i]) for i in cluster_group])
     for i, data in enumerate(gene_list):
         data.drop(labels=list(filter(lambda x: x not in gene_name, list(data.index))), inplace=True)
         data.sort_index(inplace=True)
-        gene_list[i] = data.tolist()[:]
+        gene_list[i] = scipy.stats.zscore(data.tolist())
 
     pprint.pprint(gene_name)
     pprint.pprint(gene_list)
@@ -364,8 +393,8 @@ def heatmap_sum_top(ID, cluster_function, num_groups=10, num_gene=None, show_tex
     plt.title("HeatMap _ " + ID + "_" + str(num_gene) + " Genes")
     plt.xlabel("Genes")
     plt.ylabel("Groups")
-    plt.xticks(numpy.arange(len(gene_name)), gene_name)
-    plt.yticks(numpy.arange(num_groups), list(range(num_groups)))
+    plt.xticks(numpy.arange(len(gene_name)), gene_name, fontsize=10, rotation=90)
+    plt.yticks(numpy.arange(len(group_order)), group_order, fontsize=10)
 
     threshold = numpy.amax([numpy.amax(i) for i in gene_list]) / 2
     for i in range(len(gene_name)):
@@ -374,9 +403,11 @@ def heatmap_sum_top(ID, cluster_function, num_groups=10, num_gene=None, show_tex
                 plt.text(j, i, str(gene_list[i][j]), color='white' if gene_list[i][j] < threshold else 'black', fontsize=10)
 
     fig = plt.gcf()
-    fig.set_size_inches(24, 18)
+    fig.set_size_inches(max(24, len(gene_name) * 0.5), 18)
     fig.savefig(figure_directory + "HeatMap_" + ID + "_" + str(num_groups) + "_" + str(len(gene_name)) + "_" + now + ".png")
     plt.close()
+
+    return (cluster_group, group_order, cluster_centers)
 
 
 def heatmap_mean_top(ID, cluster_function, num_groups=10, num_gene=None, show_text=True):
@@ -385,19 +416,19 @@ def heatmap_mean_top(ID, cluster_function, num_groups=10, num_gene=None, show_te
 
     cluster_group, cluster_centers = cluster_function(ID, num_groups)
 
-    gene_name = list(gene_mean_in_cells(ID).index)
+    gene_name = sorted(list(gene_mean_in_cells(ID).index))
     if num_gene is not None:
         gene_name = gene_name[:num_gene]
     gene_name = sorted(gene_name)
 
-    gene_list = [gene_mean_in_cells(ID, cluster_group[i]) for i in cluster_group]
+    gene_list = [gene_mean_in_cells(ID, cluster_group[i]).sort_index() for i in cluster_group]
     for i, data in enumerate(gene_list):
+        data = data.add(pandas.Series(0, index=gene_name), fill_value=0)
         data.drop(labels=list(filter(lambda x: x not in gene_name, list(data.index))), inplace=True)
         data.sort_index(inplace=True)
-        gene_list[i] = data.tolist()[:]
+        gene_list[i] = scipy.stats.zscore(data.tolist())
 
-    pprint.pprint(gene_name)
-    pprint.pprint(gene_list)
+    group_order, gene_list = sort_index([gene_mean_in_cells(ID, cluster_group[i]) for i in cluster_group])
 
     mpl.use("Agg")
     mpl.rcParams.update({"font.size": 30})
@@ -408,8 +439,8 @@ def heatmap_mean_top(ID, cluster_function, num_groups=10, num_gene=None, show_te
     plt.title("HeatMap_" + ID + "_" + str(num_gene) + " Genes")
     plt.xlabel("Genes")
     plt.ylabel("Groups")
-    plt.xticks(numpy.arange(len(gene_name)), gene_name)
-    plt.yticks(numpy.arange(num_groups), list(range(num_groups)))
+    plt.xticks(numpy.arange(len(gene_name)), gene_name, fontsize=10, rotation=90)
+    plt.yticks(numpy.arange(len(group_order)), group_order, fontsize=10)
 
     threshold = numpy.amax([numpy.amax(i) for i in gene_list]) / 2
     for i in range(len(gene_name)):
@@ -418,19 +449,11 @@ def heatmap_mean_top(ID, cluster_function, num_groups=10, num_gene=None, show_te
                 plt.text(j, i, str(gene_list[i][j]), color='white' if gene_list[i][j] < threshold else 'black', fontsize=10)
 
     fig = plt.gcf()
-    fig.set_size_inches(24, 18)
+    fig.set_size_inches(max(24, len(gene_name) * 0.5), 18)
     fig.savefig(figure_directory + "HeatMap_" + ID + "_" + str(num_groups) + "_" + str(len(gene_name)) + "_" + now + ".png")
     plt.close()
 
-
-def sort_index(gene_list):
-    group_order = [(numpy.argmax(gene_list[i]), gene_list[i][numpy.argmax(gene_list[i])], i) for i in range(len(gene_list))]
-
-    group_order.sort()
-
-    group_order = [c for a, b, c in group_order]
-
-    return (group_order, [gene_list[i][:] for i in group_order])
+    return (cluster_group, group_order, cluster_centers)
 
 
 def heatmap_given_genes(ID, cluster_function, gene_name=["Id4", "Gfra1", "Zbtb16", "Stra8", "Rhox13", "Sycp3", "Dmc1", "Piwil1", "Pgk2", "Acr", "Gapdhs", "Prm1"], num_groups=50):
@@ -468,11 +491,14 @@ def heatmap_given_genes(ID, cluster_function, gene_name=["Id4", "Gfra1", "Zbtb16
     return (cluster_group, group_order, cluster_centers)
 
 
-def pseudotime(ID, cluster_function, num_groups=10):
+def pseudotime(ID, cluster_function, num_groups=10, select_gene=True):
     if not check_valid_function:
         return
 
-    cluster_group, group_order, cluster_centers = heatmap_given_genes(ID, cluster_function, num_groups=num_groups)
+    if select_gene:
+        cluster_group, group_order, cluster_centers = heatmap_given_genes(ID, cluster_function, num_groups=num_groups)
+    else:
+        cluster_group, group_order, cluster_centers = heatmap_mean_top(ID, cluster_function, show_text=False)
     projection = get_data_from_id(ID)
 
     mpl.use("Agg")
@@ -487,7 +513,7 @@ def pseudotime(ID, cluster_function, num_groups=10):
     plt.grid(True)
     plt.title("Ordering Groups")
     plt.xlabel("Standardized TSNE-1")
-    plt.ylabel("STandardized TSNE-2")
+    plt.ylabel("Standardized TSNE-2")
 
     fig = plt.gcf()
     fig.set_size_inches(24, 18)
@@ -495,7 +521,7 @@ def pseudotime(ID, cluster_function, num_groups=10):
     plt.close()
 
 
-def get_common_genes(ID, cluster_function, num_groups=10):
+def get_common_genes(ID, cluster_function, num_groups=100):
     if not check_valid_function:
         return
 
@@ -512,4 +538,4 @@ def get_common_genes(ID, cluster_function, num_groups=10):
 
 
 if __name__ == "__main__":
-    pseudotime("NS_SW1", clustering_Kmeans_with_num, num_groups=10)
+    pseudotime("NS_SW4", clustering_Kmeans_with_num, num_groups=10, select_gene=False)
