@@ -56,7 +56,7 @@ IDs = ["NS_SW1", "NS_SW2", "NS_SW3", "NS_SW4"]
 
 
 def select_highly_variable_genes(raw_data, show=True, datum_point=95):
-    data = pandas.DataFrame.from_dict({"means": raw_data.mean(axis=1).to_numpy(), "variances": raw_data.var(axis=1).to_numpy()})
+    data = pandas.DataFrame.from_dict({"means": raw_data.mean(axis=1).to_numpy(), "variances": numpy.true_divide(raw_data.var(axis=1).to_numpy(), raw_data.mean(axis=1))})
 
     data = data.loc[(data["variances"] > 0) & (data["means"] > 0)]
 
@@ -77,7 +77,7 @@ def select_highly_variable_genes(raw_data, show=True, datum_point=95):
         plt.grid(True)
         plt.title(str(selected.shape[0]) + " Genes: " + str(datum_point) + "%")
         plt.xlabel("log(means)")
-        plt.ylabel("log(variances)")
+        plt.ylabel("log(CV)")
         plt.legend()
 
         fig = plt.gcf()
@@ -212,6 +212,37 @@ def make_cluster_dict(cells):
     return given
 
 
+def clustering_Spectral_with_num(ID, num_groups):
+    mpl.use("Agg")
+    mpl.rcParams.update({"font.size": 30})
+
+    projection = get_data_from_id(ID)
+
+    projection["group"] = sklearn.cluster.SpectralClustering(n_clusters=num_groups, random_state=0, n_jobs=-1).fit_predict([_ for _ in zip(projection["std_TSNE-1"], projection["std_TSNE-2"])])
+
+    group = make_cluster_dict(projection["group"])
+    data = [group[i] for i in group]
+    cluster_centers = [numpy.mean([projection.loc[d, "std_TSNE-1"], projection.loc[d, "std_TSNE-2"]], axis=1) for d in data]
+
+    plt.figure()
+    plt.scatter(projection["std_TSNE-1"], projection["std_TSNE-2"], c=projection["group"])
+    plt.scatter([elem[0] for elem in cluster_centers], [elem[1] for elem in cluster_centers], c="k", marker="X")
+    for i, loc in enumerate(cluster_centers):
+        plt.text(loc[0] + 0.05, loc[1], str(i), fontsize=30, bbox=dict(color="white", alpha=0.8))
+
+    plt.grid(True)
+    plt.title("Spectral: " + str(num_groups))
+    plt.xlabel("Standardized TSNE-1")
+    plt.ylabel("Standardized TSNE-2")
+
+    fig = plt.gcf()
+    fig.set_size_inches(24, 18)
+    fig.savefig(figure_directory + "Spectral_" + ID + "_" + str(num_groups) + "_" + now + ".png")
+    plt.close()
+
+    return (group, cluster_centers)
+
+
 def clustering_Kmeans_with_num(ID, num_groups):
     mpl.use("Agg")
     mpl.rcParams.update({"font.size": 30})
@@ -220,13 +251,13 @@ def clustering_Kmeans_with_num(ID, num_groups):
 
     kmeans = sklearn.cluster.KMeans(n_clusters=num_groups, random_state=0, n_jobs=-1).fit(numpy.array([_ for _ in zip(projection["std_TSNE-1"], projection["std_TSNE-2"])]))
 
-    projection["group"] = kmeans.fit_predict([_ for _ in zip(projection["std_TSNE-1"], projection["std_TSNE-2"])])
+    projection.loc[:, "group"] = kmeans.fit_predict([_ for _ in zip(projection["std_TSNE-1"], projection["std_TSNE-2"])])
 
     plt.figure()
     plt.scatter(projection["std_TSNE-1"], projection["std_TSNE-2"], c=projection["group"])
     plt.scatter([elem[0] for elem in kmeans.cluster_centers_], [elem[1] for elem in kmeans.cluster_centers_], c="k", marker="X", s=500)
     for i, loc in enumerate(kmeans.cluster_centers_):
-        plt.text(loc[0] + 0.05, loc[1], str(i), fontsize=30, bbox=dict(color='white', alpha=0.8))
+        plt.text(loc[0] + 0.05, loc[1], str(i), fontsize=30, bbox=dict(color="white", alpha=0.8))
 
     plt.grid(True)
     plt.title("KMeans: " + str(num_groups))
@@ -274,7 +305,7 @@ def gene_mean_in_cells(ID, cell_numbers=None, num_gene=100, text=True):
 
 
 def check_valid_function(cluster_function):
-    allowed_functions = [clustering_Kmeans_with_num]
+    allowed_functions = [clustering_Kmeans_with_num, clustering_Spectral_with_num]
     if cluster_function not in allowed_functions:
         print("cluster_function must be in", allowed_functions)
         return False
@@ -355,13 +386,14 @@ def stacked_bar_gene_mean(ID, cluster_function, num_groups=10, num_gene=5):
 
 
 def sort_index(gene_list):
-    group_order = [(numpy.argmax(gene_list[i]), gene_list[i][numpy.argmax(gene_list[i])], i) for i in range(len(gene_list))]
+    group_order = [(-1 * numpy.argmax(gene_list[i]), gene_list[i][numpy.argmax(gene_list[i])], i) for i in range(len(gene_list))]
 
     group_order.sort()
 
     group_order = [c for a, b, c in group_order]
+    answer = [[i for i in gene_list[j]] for j in group_order]
 
-    return (group_order, [gene_list[i][:] for i in group_order])
+    return (group_order, answer)
 
 
 def heatmap_sum_top(ID, cluster_function, num_groups=10, num_gene=None, show_text=True):
@@ -400,7 +432,7 @@ def heatmap_sum_top(ID, cluster_function, num_groups=10, num_gene=None, show_tex
     for i in range(len(gene_name)):
         for j in range(num_groups):
             if show_text:
-                plt.text(j, i, str(gene_list[i][j]), color='white' if gene_list[i][j] < threshold else 'black', fontsize=10)
+                plt.text(j, i, str(gene_list[i][j]), color="white" if gene_list[i][j] < threshold else 'black', fontsize=10)
 
     fig = plt.gcf()
     fig.set_size_inches(max(24, len(gene_name) * 0.5), 18)
@@ -416,7 +448,7 @@ def heatmap_mean_top(ID, cluster_function, num_groups=10, num_gene=None, show_te
 
     cluster_group, cluster_centers = cluster_function(ID, num_groups)
 
-    gene_name = sorted(list(gene_mean_in_cells(ID).index))
+    gene_name = list(gene_mean_in_cells(ID).index)
     if num_gene is not None:
         gene_name = gene_name[:num_gene]
     gene_name = sorted(gene_name)
@@ -428,8 +460,6 @@ def heatmap_mean_top(ID, cluster_function, num_groups=10, num_gene=None, show_te
         data.sort_index(inplace=True)
         gene_list[i] = scipy.stats.zscore(data.tolist())
 
-    group_order, gene_list = sort_index([gene_mean_in_cells(ID, cluster_group[i]) for i in cluster_group])
-
     mpl.use("Agg")
     mpl.rcParams.update({"font.size": 30})
 
@@ -440,36 +470,45 @@ def heatmap_mean_top(ID, cluster_function, num_groups=10, num_gene=None, show_te
     plt.xlabel("Genes")
     plt.ylabel("Groups")
     plt.xticks(numpy.arange(len(gene_name)), gene_name, fontsize=10, rotation=90)
-    plt.yticks(numpy.arange(len(group_order)), group_order, fontsize=10)
+    plt.yticks(numpy.arange(num_groups), list(range(num_groups)), fontsize=10)
 
     threshold = numpy.amax([numpy.amax(i) for i in gene_list]) / 2
     for i in range(len(gene_name)):
         for j in range(num_groups):
             if show_text:
-                plt.text(j, i, str(gene_list[i][j]), color='white' if gene_list[i][j] < threshold else 'black', fontsize=10)
+                plt.text(j, i, str(gene_list[i][j]), color="white" if gene_list[i][j] < threshold else 'black', fontsize=10)
 
     fig = plt.gcf()
     fig.set_size_inches(max(24, len(gene_name) * 0.5), 18)
     fig.savefig(figure_directory + "HeatMap_" + ID + "_" + str(num_groups) + "_" + str(len(gene_name)) + "_" + now + ".png")
     plt.close()
 
-    return (cluster_group, group_order, cluster_centers)
+    return (cluster_group, list(range(num_groups)), cluster_centers)
 
 
-def heatmap_given_genes(ID, cluster_function, gene_name=["Id4", "Gfra1", "Zbtb16", "Stra8", "Rhox13", "Sycp3", "Dmc1", "Piwil1", "Pgk2", "Acr", "Gapdhs", "Prm1"], num_groups=50):
+gene_1 = ["Grfa1", "Zbtb16", "Nanos3", "Nanos2", ",Sohlh1", "Neurog3", "Piwil4", "Lin28a", "Utf1", "Kit", "Uchl1", "Dmrt1", "Sohlh2", "Dazl", "Stra8", "Scml2", "Rpa2", "Rad51", "Rhox13", "Dmc1", "Melob", "Sycp1", "Sycp3", "Ccnb1ip1", "Hormad1", "Piwil2", "Piwil1", "Atr", "Mybl1", "Dyx1c1", "Msh3", "Ccnb1", "Spo11", "Ldha", "Ldhc", "Cetn4", "Tekt1", "Acr", "Ssxb1", "Ssxb2", "Acrv1", "Catsper3", "Catsper1", "Saxo1", "Hsfy2", "Txndc8", "Tnp1", "Tnp2", "Tmod4", "Gapdhs", "Car2", "Prm2", "Prm1", "Prm3", "Pgk2", "Wt1", "Sox9", "Cyp11a1", "Nr5a1", "Star", "Hsd3b1", "Clu", "Cyp17a1", "Gata4", "Acta2"]
+gene_2 = ["Id4", "Gfra1", "Zbtb16", "Stra8", "Rhox13", "Sycp3", "Dmc1", "Piwil1", "Pgk2", "Acr", "Gapdhs", "Prm1"]
+
+
+def heatmap_given_genes(ID, cluster_function, gene_name=gene_2, num_groups=10):
     if not check_valid_function(cluster_function):
         return
 
     cluster_group, cluster_centers = cluster_function(ID, num_groups)
 
-    gene_list = [gene_mean_in_cells(ID, cluster_group[i]) for i in cluster_group]
+    raw_gene_list = [gene_mean_in_cells(ID, cluster_group[i]) for i in cluster_group]
+    gene_list = [[None for i in gene_name] for j in raw_gene_list]
+    for i, data in enumerate(raw_gene_list):
+        for j, gene in enumerate(gene_name):
+            gene_list[i][j] = float(data.loc[gene]) if (gene in list(data.index)) else 0.0
+
     for i, data in enumerate(gene_list):
-        data = data.add(pandas.Series(0, index=gene_name), fill_value=0)
-        data.drop(labels=list(filter(lambda x: x not in gene_name, list(data.index))), inplace=True)
-        data.sort_index(inplace=True)
-        gene_list[i] = scipy.stats.zscore(data.tolist())
+        if numpy.unique(gene_list[i]).size > 1:
+            continue
+            gene_list[i] = scipy.stats.zscore(data)
 
     group_order, gene_list = sort_index(gene_list)
+    pprint.pprint(gene_list)
 
     mpl.use("Agg")
     mpl.rcParams.update({"font.size": 30})
@@ -484,7 +523,7 @@ def heatmap_given_genes(ID, cluster_function, gene_name=["Id4", "Gfra1", "Zbtb16
     plt.yticks(numpy.arange(num_groups), group_order, fontsize=10)
 
     fig = plt.gcf()
-    fig.set_size_inches(24, max(18, 0.2 * num_groups))
+    fig.set_size_inches(max(24, 0.5 * len(gene_name)), max(18, 0.2 * num_groups))
     fig.savefig(figure_directory + "HeatMap_" + ID + "_" + str(num_groups) + "_" + str(len(gene_name)) + "_" + now + ".png")
     plt.close()
 
@@ -538,4 +577,4 @@ def get_common_genes(ID, cluster_function, num_groups=100):
 
 
 if __name__ == "__main__":
-    pseudotime("NS_SW4", clustering_Kmeans_with_num, num_groups=10, select_gene=False)
+    pseudotime("NS_SW4", clustering_Kmeans_with_num, num_groups=10, select_gene=True)
