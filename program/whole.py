@@ -1,6 +1,5 @@
 import multiprocessing
 import hashlib
-import json
 import os
 import time
 import csv
@@ -40,7 +39,7 @@ data = dict()
 def get_all(ID):
     if ID in data:
         return data[ID]
-    dirname = "/BiO/Live/jwlee230/181113_spermatogenesis/result/" + ID + "/outs/filtered_feature_bc_matrix"
+    dirname = "/home/jwlee/Spermatogenesis/result/" + ID + "/outs/filtered_feature_bc_matrix"
     matrix_dir = os.path.join(dirname, "matrix.mtx.gz")
     features_path = os.path.join(dirname, "features.tsv.gz")
     barcodes_path = os.path.join(dirname, "barcodes.tsv.gz")
@@ -51,7 +50,7 @@ def get_all(ID):
 
 
 now = time.strftime("%m%d%H%M%S")
-figure_directory = "/BiO/Live/jwlee230/181113_spermatogenesis/figures/"
+figure_directory = "/home/jwlee/Spermatogenesis/figures/"
 IDs = ["NS_SW1", "NS_SW2", "NS_SW3", "NS_SW4"]
 
 
@@ -64,7 +63,7 @@ def select_highly_variable_genes(raw_data, show=True, datum_point=95):
     unselected = data.loc[(data["variances"] < numpy.percentile(data["variances"], datum_point)) | (data["means"] < numpy.percentile(data["means"], datum_point))]
 
     raw_data = raw_data.iloc[selected.index]
-    print(raw_data.shape)
+    print("Gene & Cell:", raw_data.shape)
 
     if show:
         mpl.use("Agg")
@@ -96,28 +95,47 @@ def get_whole_data(genes=None):
         if data is None:
             return hashlib.md5("".encode("utf-8")).hexdigest()
         else:
-            return hashlib.md5(json.dumps(data.encode("utf-8"))).hexdigest()
+            return hashlib.md5(str(sorted(genes)).encode("utf-8")).hexdigest()
 
     if make_md5(genes) in whole_data:
         return whole_data[make_md5(genes)]
 
-    data = pandas.DataFrame(scipy.io.mmread("/BiO/Live/jwlee230/181113_spermatogenesis/result/aggr/outs/filtered_feature_bc_matrix/matrix.mtx").toarray())
+    if genes is not None and "ref" in genes:
+        data = pandas.DataFrame(scipy.io.mmread("/home/jwlee/Spermatogenesis/result/ref/outs/filtered_feature_bc_matrix/matrix.mtx").toarray())
+        print(data)
+
+        data = sklearn.decomposition.PCA(random_state=0, n_components=data.shape[1]).fit_transform(numpy.swapaxes(data.values, 0, 1))
+        print("PCA data:", data)
+        print("Cell & Gene:", len(data), len(data[0]))
+
+        data = numpy.swapaxes(sklearn.manifold.TSNE(n_components=2, random_state=0).fit_transform(data), 0, 1)
+
+        projection = dict()
+        projection["Barcode"] = get_barcodes("/home/jwlee/Spermatogenesis/result/ref/outs/filtered_feature_bc_matrix/barcodes.tsv.gz")
+        projection["std_TSNE-1"] = scipy.stats.zscore(data[0])
+        projection["std_TSNE-2"] = scipy.stats.zscore(data[1])
+
+        whole_data[make_md5(genes)] = projection
+
+        return projection
+
+    data = pandas.DataFrame(scipy.io.mmread("/home/jwlee/Spermatogenesis/result/aggr/outs/filtered_feature_bc_matrix/matrix.mtx").toarray())
 
     if genes is None:
         data = select_highly_variable_genes(data)
     else:
-        data["gene"] = get_gene_name("/BiO/Live/jwlee230/181113_spermatogenesis/result/aggr/outs/filtered_feature_bc_matrix/features.tsv.gz")
+        data["gene"] = get_gene_name("/home/jwlee/Spermatogenesis/result/aggr/outs/filtered_feature_bc_matrix/features.tsv.gz")
         data = data[data["gene"].isin(genes)]
         del data["gene"]
 
     data = sklearn.decomposition.PCA(random_state=0, n_components="mle").fit_transform(numpy.swapaxes(data.values, 0, 1))
-    print(data)
-    print(len(data), len(data[0]))
+    print("PCA data: ", data)
+    print("Cell & Gene:", len(data), len(data[0]))
 
     data = numpy.swapaxes(sklearn.manifold.TSNE(n_components=2, random_state=0).fit_transform(data), 1, 0)
 
     projection = dict()
-    projection["Barcode"] = numpy.array(get_barcodes("/BiO/Live/jwlee230/181113_spermatogenesis/result/aggr/outs/filtered_feature_bc_matrix/barcodes.tsv.gz"))
+    projection["Barcode"] = numpy.array(get_barcodes("/home/jwlee/Spermatogenesis/result/aggr/outs/filtered_feature_bc_matrix/barcodes.tsv.gz"))
     projection["std_TSNE-1"] = scipy.stats.zscore(data[0])
     projection["std_TSNE-2"] = scipy.stats.zscore(data[1])
 
@@ -149,12 +167,15 @@ def draw_all():
 
 
 def get_real_barcodes(ID):
-    projection = pandas.read_csv("/BiO/Live/jwlee230/181113_spermatogenesis/result/" + ID + "/outs/analysis/tsne/2_components/projection.csv", header=0)
+    projection = pandas.read_csv("/home/jwlee/Spermatogenesis/result/" + ID + "/outs/analysis/tsne/2_components/projection.csv", header=0)
 
     return [barcode[:-1] + ID[-1] for barcode in projection["Barcode"]]
 
 
 def get_data_from_id(ID):
+    if ID == "ref":
+        return get_whole_data(genes=["ref"])
+
     projection = get_whole_data()
     return projection[numpy.isin(projection["Barcode"], get_real_barcodes(ID))]
 
@@ -251,7 +272,7 @@ def clustering_Kmeans_with_num(ID, num_groups):
 
     kmeans = sklearn.cluster.KMeans(n_clusters=num_groups, random_state=0, n_jobs=-1).fit(numpy.array([_ for _ in zip(projection["std_TSNE-1"], projection["std_TSNE-2"])]))
 
-    projection.loc[:, "group"] = kmeans.fit_predict([_ for _ in zip(projection["std_TSNE-1"], projection["std_TSNE-2"])])
+    projection["group"] = kmeans.fit_predict([_ for _ in zip(projection["std_TSNE-1"], projection["std_TSNE-2"])])
 
     plt.figure()
     plt.scatter(projection["std_TSNE-1"], projection["std_TSNE-2"], c=projection["group"])
@@ -503,9 +524,10 @@ def heatmap_given_genes(ID, cluster_function, gene_name=gene_2, num_groups=10):
             gene_list[i][j] = float(data.loc[gene]) if (gene in list(data.index)) else 0.0
 
     for i, data in enumerate(gene_list):
-        if numpy.unique(gene_list[i]).size > 1:
-            continue
+        if numpy.unique(data).size > 1:
             gene_list[i] = scipy.stats.zscore(data)
+        else:
+            gene_list[i] = [0 for gene in data]
 
     group_order, gene_list = sort_index(gene_list)
     pprint.pprint(gene_list)
@@ -547,7 +569,7 @@ def pseudotime(ID, cluster_function, num_groups=10, select_gene=True):
     for i in cluster_group:
         plt.scatter(projection["std_TSNE-1"].iloc[cluster_group[i]], projection["std_TSNE-2"].iloc[cluster_group[i]], c=["C" + str(i % 10) for _ in range(projection["std_TSNE-1"].iloc[cluster_group[i]].size)])
     for i in range(1, len(cluster_centers)):
-        plt.arrow(cluster_centers[group_order[i - 1]][0], cluster_centers[group_order[i - 1]][1], cluster_centers[group_order[i]][0] - cluster_centers[group_order[i - 1]][0], cluster_centers[group_order[i]][1] - cluster_centers[group_order[i - 1]][1], width=0.05, edgecolor=None, linestyle=":")
+        plt.arrow(cluster_centers[group_order[i - 1]][0], cluster_centers[group_order[i - 1]][1], 0.8 * (cluster_centers[group_order[i]][0] - cluster_centers[group_order[i - 1]][0]), 0.8 * (cluster_centers[group_order[i]][1] - cluster_centers[group_order[i - 1]][1]), width=0.05, edgecolor=None, linestyle=":")
 
     plt.grid(True)
     plt.title("Ordering Groups")
@@ -557,6 +579,48 @@ def pseudotime(ID, cluster_function, num_groups=10, select_gene=True):
     fig = plt.gcf()
     fig.set_size_inches(24, 18)
     fig.savefig(figure_directory + "Arrow_" + ID + "_" + str(num_groups) + "_" + now + ".png")
+    plt.close()
+
+
+def bar_given_genes(ID, cluster_function, gene_name=gene_2, num_groups=10):
+    if not check_valid_function(cluster_function):
+        return
+
+    cluster_group, cluster_centers = cluster_function(ID, num_groups)
+
+    raw_gene_list = [gene_mean_in_cells(ID, cluster_group[i]) for i in cluster_group]
+    gene_list = [[None for i in gene_name] for j in cluster_group]
+    for i, data in enumerate(raw_gene_list):
+        for j, gene in enumerate(gene_name):
+            gene_list[i][j] = float(data.loc[gene]) if (gene in list(data.index)) else 0.0
+
+    for i, data in enumerate(gene_list):
+        if numpy.unique(data).size > 1:
+            gene_list[i] = scipy.stats.zscore(data)
+        else:
+            gene_list[i] = [0 for _ in data]
+
+    mpl.use("Agg")
+    mpl.rcParams.update({"font.size": 30})
+
+    plt.figure()
+    fig, ax = plt.subplot(num_groups)
+
+    for i, data in enumerate(gene_list):
+        for j, high in enumerate(data):
+            ax[i].bar(j, high, color=j, edgecolor="k", label=gene_name[j])
+
+        ax[i].xlabel("Group")
+        ax[i].ylabel("Z-score")
+        ax[i].xticks(numpy.arange(num_groups), [i for i in range(num_groups)])
+
+        ax[i].grid(True)
+
+    plt.title("Bar Graph with " + str(len(gene_name)) + " Genes")
+
+    fig = plt.gcf()
+    fig.set_size_inches(24, max(18, 2 * num_groups))
+    fig.savefig(figure_directory + "Bar_graph_" + ID + "_" + str(num_groups) + "_" + str(len(gene_name)) + "_" + now + ".png")
     plt.close()
 
 
@@ -577,4 +641,6 @@ def get_common_genes(ID, cluster_function, num_groups=100):
 
 
 if __name__ == "__main__":
-    pseudotime("NS_SW4", clustering_Kmeans_with_num, num_groups=10, select_gene=True)
+    bar_given_genes("NS_SW1", clustering_Kmeans_with_num)
+    for _ in range(5):
+        print("\a")
