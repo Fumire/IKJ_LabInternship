@@ -55,12 +55,12 @@ IDs = ["NS_SW1", "NS_SW2", "NS_SW3", "NS_SW4"]
 
 
 def select_highly_variable_genes(raw_data, show=True, datum_point=95):
-    data = pandas.DataFrame.from_dict({"means": raw_data.mean(axis=1).to_numpy(), "variances": numpy.true_divide(raw_data.var(axis=1).to_numpy(), raw_data.mean(axis=1))})
+    data = pandas.DataFrame.from_dict({"means": raw_data.mean(axis=1).to_numpy(), "cvs": numpy.true_divide(raw_data.var(axis=1).to_numpy(), raw_data.mean(axis=1))})
 
-    data = data.loc[(data["variances"] > 0) & (data["means"] > 0)]
+    data = data.loc[(data["cvs"] > 0) & (data["means"] > 0)]
 
-    selected = data.loc[(data["variances"] >= numpy.percentile(data["variances"], datum_point)) & (data["means"] >= numpy.percentile(data["means"], datum_point))]
-    unselected = data.loc[(data["variances"] < numpy.percentile(data["variances"], datum_point)) | (data["means"] < numpy.percentile(data["means"], datum_point))]
+    selected = data.loc[(data["cvs"] >= numpy.percentile(data["cvs"], datum_point)) & (data["means"] >= numpy.percentile(data["means"], datum_point))]
+    unselected = data.loc[(data["cvs"] < numpy.percentile(data["cvs"], datum_point)) | (data["means"] < numpy.percentile(data["means"], datum_point))]
 
     raw_data = raw_data.iloc[selected.index]
     print("Gene & Cell:", raw_data.shape)
@@ -70,11 +70,11 @@ def select_highly_variable_genes(raw_data, show=True, datum_point=95):
         mpl.rcParams.update({"font.size": 30})
 
         plt.figure()
-        plt.scatter(numpy.log(selected["means"]), numpy.log(selected["variances"]), c="blue", alpha=0.6, label="Selected")
-        plt.scatter(numpy.log(unselected["means"]), numpy.log(unselected["variances"]), c="red", alpha=0.6, label="Unselected")
+        plt.scatter(numpy.log(selected["means"]), numpy.log(selected["cvs"]), c="blue", alpha=0.6, label="Selected")
+        plt.scatter(numpy.log(unselected["means"]), numpy.log(unselected["cvs"]), c="red", alpha=0.6, label="Unselected")
 
         plt.grid(True)
-        plt.title(str(selected.shape[0]) + " Genes: " + str(datum_point) + "%")
+        plt.title(str(selected.shape[0]) + " Genes: " + str(100 - datum_point) + "%")
         plt.xlabel("log(means)")
         plt.ylabel("log(CV)")
         plt.legend()
@@ -106,7 +106,7 @@ def get_whole_data(genes=None):
 
         data = sklearn.decomposition.PCA(random_state=0, n_components=data.shape[1]).fit_transform(numpy.swapaxes(data.values, 0, 1))
         print("PCA data:", data)
-        print("Cell & Gene:", len(data), len(data[0]))
+        print("Cell & Gene-like:", len(data), len(data[0]))
 
         data = numpy.swapaxes(sklearn.manifold.TSNE(n_components=2, random_state=0).fit_transform(data), 0, 1)
 
@@ -130,7 +130,7 @@ def get_whole_data(genes=None):
 
     data = sklearn.decomposition.PCA(random_state=0, n_components="mle").fit_transform(numpy.swapaxes(data.values, 0, 1))
     print("PCA data: ", data)
-    print("Cell & Gene:", len(data), len(data[0]))
+    print("Cell & Gene-like:", len(data), len(data[0]))
 
     data = numpy.swapaxes(sklearn.manifold.TSNE(n_components=2, random_state=0).fit_transform(data), 1, 0)
 
@@ -239,7 +239,7 @@ def clustering_Spectral_with_num(ID, num_groups):
 
     projection = get_data_from_id(ID)
 
-    projection["group"] = sklearn.cluster.SpectralClustering(n_clusters=num_groups, random_state=0, n_jobs=-1).fit_predict([_ for _ in zip(projection["std_TSNE-1"], projection["std_TSNE-2"])])
+    projection["group"] = sklearn.cluster.SpectralClustering(n_clusters=num_groups, random_state=0, n_jobs=-1).fit_predict(projection[["std_TSNE-1", "std_TSNE-2"]].values)
 
     group = make_cluster_dict(projection["group"])
     data = [group[i] for i in group]
@@ -270,9 +270,9 @@ def clustering_Kmeans_with_num(ID, num_groups):
 
     projection = get_data_from_id(ID)
 
-    kmeans = sklearn.cluster.KMeans(n_clusters=num_groups, random_state=0, n_jobs=-1).fit(numpy.array([_ for _ in zip(projection["std_TSNE-1"], projection["std_TSNE-2"])]))
+    kmeans = sklearn.cluster.KMeans(n_clusters=num_groups, random_state=0, n_jobs=-1).fit(projection[["std_TSNE-1", "std_TSNE-2"]].values)
 
-    projection["group"] = kmeans.fit_predict([_ for _ in zip(projection["std_TSNE-1"], projection["std_TSNE-2"])])
+    projection["group"] = kmeans.fit_predict(projection[["std_TSNE-1", "std_TSNE-2"]].values)
 
     plt.figure()
     plt.scatter(projection["std_TSNE-1"], projection["std_TSNE-2"], c=projection["group"])
@@ -407,11 +407,11 @@ def stacked_bar_gene_mean(ID, cluster_function, num_groups=10, num_gene=5):
 
 
 def sort_index(gene_list):
-    group_order = [(-1 * numpy.argmax(gene_list[i]), gene_list[i][numpy.argmax(gene_list[i])], i) for i in range(len(gene_list))]
+    group_order = [tuple(list(scipy.stats.rankdata(data)) + [i]) for i, data in enumerate(gene_list)]
 
     group_order.sort()
 
-    group_order = [c for a, b, c in group_order]
+    group_order = [list(elem)[-1] for elem in group_order]
     answer = [[i for i in gene_list[j]] for j in group_order]
 
     return (group_order, answer)
@@ -511,7 +511,7 @@ gene_1 = ["Grfa1", "Zbtb16", "Nanos3", "Nanos2", ",Sohlh1", "Neurog3", "Piwil4",
 gene_2 = ["Id4", "Gfra1", "Zbtb16", "Stra8", "Rhox13", "Sycp3", "Dmc1", "Piwil1", "Pgk2", "Acr", "Gapdhs", "Prm1"]
 
 
-def heatmap_given_genes(ID, cluster_function, gene_name=gene_2, num_groups=10):
+def heatmap_given_genes(ID, cluster_function, gene_name=gene_1, num_groups=10):
     if not check_valid_function(cluster_function):
         return
 
@@ -552,7 +552,7 @@ def heatmap_given_genes(ID, cluster_function, gene_name=gene_2, num_groups=10):
     return (cluster_group, group_order, cluster_centers)
 
 
-def pseudotime(ID, cluster_function, num_groups=10, select_gene=True):
+def pseudotime(ID, cluster_function, num_groups=100, select_gene=True):
     if not check_valid_function:
         return
 
@@ -582,7 +582,7 @@ def pseudotime(ID, cluster_function, num_groups=10, select_gene=True):
     plt.close()
 
 
-def bar_given_genes(ID, cluster_function, gene_name=gene_2, num_groups=10):
+def bar_given_genes(ID, cluster_function, gene_name=gene_1, num_groups=10):
     if not check_valid_function(cluster_function):
         return
 
@@ -604,22 +604,16 @@ def bar_given_genes(ID, cluster_function, gene_name=gene_2, num_groups=10):
     mpl.rcParams.update({"font.size": 30})
 
     plt.figure()
-    fig, ax = plt.subplot(num_groups)
+    fig, ax = plt.subplots(num_groups)
 
     for i, data in enumerate(gene_list):
         for j, high in enumerate(data):
-            ax[i].bar(j, high, color=j, edgecolor="k", label=gene_name[j])
+            ax[i].bar(j, high, color="C" + str(j % 10), edgecolor="k", label=gene_name[j])
 
-        ax[i].xlabel("Group")
-        ax[i].ylabel("Z-score")
-        ax[i].xticks(numpy.arange(num_groups), [i for i in range(num_groups)])
-
-        ax[i].grid(True)
-
-    plt.title("Bar Graph with " + str(len(gene_name)) + " Genes")
+    plt.setp(ax, xticks=list(range(len(gene_name))), xticklabels=gene_name)
 
     fig = plt.gcf()
-    fig.set_size_inches(24, max(18, 2 * num_groups))
+    fig.set_size_inches(max(24, 2.5 * len(gene_name)), max(18, 4 * num_groups))
     fig.savefig(figure_directory + "Bar_graph_" + ID + "_" + str(num_groups) + "_" + str(len(gene_name)) + "_" + now + ".png")
     plt.close()
 
@@ -641,6 +635,8 @@ def get_common_genes(ID, cluster_function, num_groups=100):
 
 
 if __name__ == "__main__":
-    bar_given_genes("NS_SW1", clustering_Kmeans_with_num)
+    with multiprocessing.Pool(processes=1) as pool:
+        pool.starmap(pseudotime, [(ID, clustering_Kmeans_with_num) for ID in IDs])
+        pool.starmap(bar_given_genes, [(ID, clustering_Kmeans_with_num) for ID in IDs])
     for _ in range(5):
         print("\a")
