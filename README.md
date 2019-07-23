@@ -52,10 +52,10 @@ Get all data according to ID
 #### Returns
 1. Dictionary for data
 - matrix: get_matrix()
-- get_feature_ids()
-- get_gene_name()
-- get_feature_type()
-- get_barcodes()
+- features_ids: get_feature_ids()
+- gene_name: get_gene_name()
+- feature_type: get_feature_type()
+- barcodes: get_barcodes()
 
 ### select_highly_variable_genes(raw_data, show=True, datum_point=95)
 Select highly variable genes
@@ -65,3 +65,26 @@ Select highly variable genes
 3. datum_point: float. x means, select genes which is higher than x% genes.
 #### Returns
 1. List of List. Highly variable genes.
+
+### get_whole_data(genes=None)
+Get aggregated data and do PCA & TSNE dimesion reduction.
+#### Paramteters
+1. genes: List or String.
+- List: selected gene list
+- string: "ref". use refences data or not.
+#### Returns
+1. Pandas dataframe: projection data
+
+### draw_all()
+Draw scatter for TSNE data
+
+### get_real_barcodes(ID)
+Get barcodes and concatenate numbers
+#### Paramteters
+1. ID: String. Name.
+#### Returns
+1. List. Changed barcodes.
+
+### get_data_from_id(ID)
+Get data from ID
+
