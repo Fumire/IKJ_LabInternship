@@ -30,7 +30,7 @@ Path for file
 Get gene names
 #### Paramteters
 1. filename
-Path for file
+    Path for file
 #### Returns
 1. List for gene name
 
