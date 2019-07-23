@@ -108,3 +108,21 @@ Make cluster data into dictionary
 1. cells: List. Each elements mean group number
 #### Returns
 1. Dictionary. Each values mean cell number which have same group.
+
+### clustering_Spectral_with_num(ID, num_groups)
+Clustering with Spectral algorithm
+#### Paramteters
+1. ID.
+2. num_groups: int. number of groups
+#### Returns
+1. Dictionary which contains group information
+2. List of cluster centers.
+
+### clustering_Kmeans_with_num(ID, num_groups)
+Clustering with Kmean algorithm
+#### Paramteters
+1. ID.
+2. num_groups: int. number of groups.
+#### Returns
+1. Dictionary which contains group information
+2. List of cluster centers.
