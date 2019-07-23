@@ -101,7 +101,7 @@ def get_whole_data(genes=None):
         return whole_data[make_md5(genes)]
 
     if genes is not None and "ref" in genes:
-        data = pandas.DataFrame(scipy.io.mmread("/home/jwlee/Spermatogenesis/result/ref/outs/filtered_feature_bc_matrix/matrix.mtx").toarray())
+        data = get_matrix("/home/jwlee/Spermatogenesis/result/ref/outs/filtered_feature_bc_matrix/matrix.mtx.gz")
         print(data)
 
         data = sklearn.decomposition.PCA(random_state=0, n_components=data.shape[1]).fit_transform(numpy.swapaxes(data.values, 0, 1))
@@ -507,6 +507,28 @@ def heatmap_mean_top(ID, cluster_function, num_groups=10, num_gene=None, show_te
     return (cluster_group, list(range(num_groups)), cluster_centers)
 
 
+def find_marker_gene(ID, cluster_function, num_groups=10):
+    if not check_valid_function(cluster_function):
+        return
+
+    cluster_group, cluster_centers = cluster_function(ID, num_groups)
+
+    whole_cells = gene_in_cells(ID)
+    marker_gene = list()
+    for i in cluster_group:
+        selected_gene = list()
+        data = gene_in_cells(ID, cell_numbers=cluster_group[i])
+        for row in list(data.index):
+            value = scipy.stats.ttest_ind(list(data.loc[row]), list(whole_cells.loc[row]))
+            if value[0] > 0 and value[1] < 0.05:
+                selected_gene.append((value[1], row))
+        selected_gene.sort()
+        print(selected_gene[:10])
+        marker_gene.append(tuple(selected_gene[i][1] for i in range(3)))
+
+    return marker_gene
+
+
 gene_1 = ["Grfa1", "Zbtb16", "Nanos3", "Nanos2", ",Sohlh1", "Neurog3", "Piwil4", "Lin28a", "Utf1", "Kit", "Uchl1", "Dmrt1", "Sohlh2", "Dazl", "Stra8", "Scml2", "Rpa2", "Rad51", "Rhox13", "Dmc1", "Melob", "Sycp1", "Sycp3", "Ccnb1ip1", "Hormad1", "Piwil2", "Piwil1", "Atr", "Mybl1", "Dyx1c1", "Msh3", "Ccnb1", "Spo11", "Ldha", "Ldhc", "Cetn4", "Tekt1", "Acr", "Ssxb1", "Ssxb2", "Acrv1", "Catsper3", "Catsper1", "Saxo1", "Hsfy2", "Txndc8", "Tnp1", "Tnp2", "Tmod4", "Gapdhs", "Car2", "Prm2", "Prm1", "Prm3", "Pgk2", "Wt1", "Sox9", "Cyp11a1", "Nr5a1", "Star", "Hsd3b1", "Clu", "Cyp17a1", "Gata4", "Acta2"]
 gene_2 = ["Id4", "Gfra1", "Zbtb16", "Stra8", "Rhox13", "Sycp3", "Dmc1", "Piwil1", "Pgk2", "Acr", "Gapdhs", "Prm1"]
 
@@ -635,8 +657,7 @@ def get_common_genes(ID, cluster_function, num_groups=100):
 
 
 if __name__ == "__main__":
-    with multiprocessing.Pool(processes=1) as pool:
-        pool.starmap(pseudotime, [(ID, clustering_Kmeans_with_num) for ID in IDs])
-        pool.starmap(bar_given_genes, [(ID, clustering_Kmeans_with_num) for ID in IDs])
+    print(find_marker_gene("NS_SW1", clustering_Kmeans_with_num))
+
     for _ in range(5):
         print("\a")
