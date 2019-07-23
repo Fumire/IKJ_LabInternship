@@ -51,11 +51,11 @@ Get all data according to ID
 1. filename: Path for file
 #### Returns
 1. Dictionary for data
-1.1. matrix: get_matrix()
-1.2. get_feature_ids()
-1.3. get_gene_name()
-1.4. get_feature_type()
-1.5. get_barcodes()
+- matrix: get_matrix()
+- get_feature_ids()
+- get_gene_name()
+- get_feature_type()
+- get_barcodes()
 
 ### select_highly_variable_genes(raw_data, show=True, datum_point=95)
 Select highly variable genes
