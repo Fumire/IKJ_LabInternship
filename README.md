@@ -87,4 +87,24 @@ Get barcodes and concatenate numbers
 
 ### get_data_from_id(ID)
 Get data from ID
+#### Paramteters
+1. ID: "ref" or sample name.
+#### Returns
+1. List.
+- if ID is "ref", reference data
+- Else, the data which have given ID in aggregated data
 
+### draw_all_with_color()
+Draw all data in one plot with different color
+
+### draw_tSNE(ID)
+Draw data according to ID in plot.
+#### Paramteters
+1. ID
+
+### make_cluster_dict(cells)
+Make cluster data into dictionary
+#### Paramteters
+1. cells: List. Each elements mean group number
+#### Returns
+1. Dictionary. Each values mean cell number which have same group.
