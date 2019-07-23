@@ -655,6 +655,8 @@ def get_common_genes(ID, cluster_function, num_groups=100):
     pprint.pprint(common_gene)
     print(len(common_gene))
 
+    return common_gene
+
 
 if __name__ == "__main__":
     print(find_marker_gene("NS_SW1", clustering_Kmeans_with_num))
