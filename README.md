@@ -12,5 +12,9 @@ This project needs some FASTQ files.
 
 ### get_matrix(filename)
 Read matrix file in to pandas dataframe.
+#### Paramteters
+1. filename
+path for file
 
-
+#### Returns
+Matrix via Pandas dataframe.
