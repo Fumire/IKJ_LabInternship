@@ -119,7 +119,7 @@ def get_whole_data(genes=None):
 
         return projection
 
-    data = pandas.DataFrame(scipy.io.mmread("/home/jwlee/Spermatogenesis/result/aggr/outs/filtered_feature_bc_matrix/matrix.mtx").toarray())
+    data = get_matrix("/home/jwlee/Spermatogenesis/result/aggr/outs/filtered_feature_bc_matrix/matrix.mtx.gz")
 
     if genes is None:
         data = select_highly_variable_genes(data)
@@ -172,11 +172,11 @@ def get_real_barcodes(ID):
     return [barcode[:-1] + ID[-1] for barcode in projection["Barcode"]]
 
 
-def get_data_from_id(ID):
+def get_data_from_id(ID, genes=None):
     if ID == "ref":
         return get_whole_data(genes=["ref"])
 
-    projection = get_whole_data()
+    projection = get_whole_data(genes)
     return projection[numpy.isin(projection["Barcode"], get_real_barcodes(ID))]
 
 
@@ -640,7 +640,7 @@ def bar_given_genes(ID, cluster_function, gene_name=gene_1, num_groups=10):
     plt.close()
 
 
-def get_common_genes(ID, cluster_function, num_groups=100):
+def get_common_genes(ID, cluster_function, num_groups=10):
     if not check_valid_function:
         return
 
@@ -650,6 +650,8 @@ def get_common_genes(ID, cluster_function, num_groups=100):
 
     common_gene = set(gene_list[0])
     for gene in gene_list[1:]:
+        if not common_gene:
+            return common_gene
         common_gene = common_gene & set(gene)
 
     pprint.pprint(common_gene)
@@ -658,8 +660,46 @@ def get_common_genes(ID, cluster_function, num_groups=100):
     return common_gene
 
 
+def scatter_given_genes(ID, genes=gene_1):
+    def change_scale(gene_expression):
+        minimum, maximum = min(gene_expression), max(gene_expression)
+
+        return list(map(lambda x: (x - minimum) / (maximum - minimum), gene_expression))
+
+    data_1 = get_data_from_id(ID)
+    data_2 = get_all(ID)
+
+    for gene in genes:
+        try:
+            number_gene = data_2["gene_name"].index(gene)
+        except ValueError:
+            print(gene, "is not here")
+            continue
+
+        gene_expression = change_scale(data_2["matrix"].iloc[number_gene].values)
+
+        mpl.use("Agg")
+        mpl.rcParams.update({"font.size": 30})
+
+        plt.figure()
+        for x, y, alpha in zip(data_1["std_TSNE-1"], data_1["std_TSNE-2"], gene_expression):
+            plt.scatter(x, y, c='b', alpha=alpha)
+
+        plt.grid(True)
+        plt.title(ID + "_" + gene)
+        plt.xlabel("Standardized TSNE-1")
+        plt.ylabel("Standardized TSNE-2")
+
+        fig = plt.gcf()
+        fig.set_size_inches(24, 18)
+        fig.savefig(figure_directory + "Scatter" + ID + "_" + gene + "_" + now + ".png")
+        plt.close()
+
+        print(gene, "Done!!")
+
+
 if __name__ == "__main__":
-    print(find_marker_gene("NS_SW1", clustering_Kmeans_with_num))
+    scatter_given_genes("NS_SW1")
 
     for _ in range(5):
         print("\a")
