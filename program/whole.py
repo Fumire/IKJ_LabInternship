@@ -184,6 +184,11 @@ def get_data_from_id(ID, genes=None):
     return projection[numpy.isin(projection["Barcode"], get_real_barcodes(ID))]
 
 
+def get_data_from_id_3d(ID, genes=None):
+    projection = get_whole_data_3d(genes)
+    return projection[numpy.isin(projection["Barcode"], get_real_barcodes(ID))]
+
+
 def draw_all_with_color():
     mpl.use("Agg")
     mpl.rcParams.update({"font.size": 30})
@@ -301,6 +306,34 @@ def clustering_Kmeans(ID, num=10):
     return [clustering_Kmeans_with_num(ID, i) for i in range(2, num + 1)]
 
 
+def clustering_Kmeans_with_num_3d(ID, num_groups):
+    mpl.use("Agg")
+    mpl.rcParams.update({"font.size": 30})
+
+    projection = get_data_from_id_3d(ID)
+
+    kmeans = sklearn.cluster.KMeans(n_clusters=num_groups, random_state=0, n_jobs=-1).fit(projection[["std_TSNE-1", "std_TSNE-2", "std_TSNE-3"]].values)
+
+    projection["group"] = kmeans.fit_predict(projection[["std_TSNE-1", "std_TSNE-2", "std_TSNE-3"]].values)
+
+    fig = plt.figure()
+    ax = mpl_toolkits.mplot3d.Axes3D(fig, elev=45, azim=135)
+    ax.scatter(projection["std_TSNE-1"], projection["std_TSNE-2"], projection["std_TSNE-3"], c=projection["group"])
+    ax.scatter([elem[0] for elem in kmeans.cluster_centers_], [elem[1] for elem in kmeans.cluster_centers_], [elem[2] for elem in kmeans.cluster_centers_], c="k", marker="X", s=500)
+
+    ax.set_title("KMeans: " + str(num_groups))
+    ax.set_xlabel("Standardized TSNE-1")
+    ax.set_ylabel("Standardized TSNE-2")
+    ax.set_zlabel("Standardized TSNE-3")
+
+    fig = plt.gcf()
+    fig.set_size_inches(24, 18)
+    fig.savefig(figure_directory + "KMeans3D_" + ID + "_" + str(num_groups) + "_" + now + ".png")
+    plt.close()
+
+    return (make_cluster_dict(projection["group"]), kmeans.cluster_centers_)
+
+
 def gene_in_cells(ID, cell_numbers=None):
     all_data = get_all(ID)
     all_data["matrix"].index = all_data["gene_name"]
@@ -331,6 +364,15 @@ def gene_mean_in_cells(ID, cell_numbers=None, num_gene=100, text=True):
 
 def check_valid_function(cluster_function):
     allowed_functions = [clustering_Kmeans_with_num, clustering_Spectral_with_num]
+    if cluster_function not in allowed_functions:
+        print("cluster_function must be in", allowed_functions)
+        return False
+    else:
+        return True
+
+
+def check_valid_function_3d(cluster_function):
+    allowed_functions = [clustering_Kmeans_with_num_3d]
     if cluster_function not in allowed_functions:
         print("cluster_function must be in", allowed_functions)
         return False
@@ -776,6 +818,6 @@ def draw_tSNE_3d(ID, genes=None):
 
 if __name__ == "__main__":
     for ID in IDs:
-        draw_tSNE_3d(ID)
+        clustering_Kmeans_with_num_3d(ID, 10)
     for _ in range(5):
         print("\a")
