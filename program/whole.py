@@ -307,6 +307,10 @@ def clustering_Kmeans(ID, num=10):
 
 
 def clustering_Kmeans_with_num_3d(ID, num_groups):
+    def change_str(num):
+        color = ["#7e1e9c", "#15b01a", "#0343df", "#ff81c0", "#653700", "#e50000", "#95d0fc", "#029386", "#f97306", "#96f97b", "c20078", "#ffff14", "#75bbfd", "#929591", "#89fe05", "#bf77f6", "#9a0eea", "#033500"]
+        return color[num % len(color)]
+
     mpl.use("Agg")
     mpl.rcParams.update({"font.size": 30})
 
@@ -330,6 +334,12 @@ def clustering_Kmeans_with_num_3d(ID, num_groups):
     fig.set_size_inches(24, 18)
     fig.savefig(figure_directory + "KMeans3D_" + ID + "_" + str(num_groups) + "_" + now + ".png")
     plt.close()
+
+    if not os.path.exists("Kmeans_" + ID + "_" + str(num_groups) + ".data"):
+        with open("KMeans_" + ID + "_" + str(num_groups) + ".data", "w") as f:
+            f.write("x,y,z,c\n")
+            for x, y, z, c in zip(projection["std_TSNE-1"], projection["std_TSNE-2"], projection["std_TSNE-3"], list(map(lambda x: change_str(x), projection["group"]))):
+                f.write(str(x) + "," + str(y) + "," + str(z) + "," + c + "\n")
 
     return (make_cluster_dict(projection["group"]), kmeans.cluster_centers_)
 
@@ -579,7 +589,7 @@ gene_1 = ["Grfa1", "Zbtb16", "Nanos3", "Nanos2", ",Sohlh1", "Neurog3", "Piwil4",
 gene_2 = ["Id4", "Gfra1", "Zbtb16", "Stra8", "Rhox13", "Sycp3", "Dmc1", "Piwil1", "Pgk2", "Acr", "Gapdhs", "Prm1"]
 
 
-def heatmap_given_genes(ID, cluster_function, gene_name=gene_1, num_groups=10):
+def heatmap_given_genes(ID, cluster_function, gene_name=gene_2, num_groups=10):
     if not check_valid_function(cluster_function) and not check_valid_function_3d(cluster_function):
         return
 
@@ -650,7 +660,7 @@ def pseudotime(ID, cluster_function, num_groups=100, select_gene=True):
     plt.close()
 
 
-def pseudotime_3d(ID, cluster_function, num_groups=10, select_gene=True):
+def pseudotime_3d(ID, cluster_function, num_groups=100, select_gene=True):
     class Arrow3D(matplotlib.patches.FancyArrowPatch):
         def __init__(self, xs, ys, zs, *args, **kwargs):
             matplotlib.patches.FancyArrowPatch.__init__(self, (0, 0), (0, 0), *args, **kwargs)
@@ -833,14 +843,20 @@ def draw_tSNE_3d(ID, genes=None):
 
     whole_projection = get_whole_data_3d(genes)
 
-    if not os.path.exists(ID + "_" + now + ".csv"):
-        with open(ID + "_" + now + ".csv", "w") as f:
+    if not os.path.exists("whole.data"):
+        with open("whole.data", "w") as f:
             f.write("x,y,z\n")
             for x, y, z in zip(whole_projection["std_TSNE-1"], whole_projection["std_TSNE-2"], whole_projection["std_TSNE-3"]):
                 f.write(str(x) + "," + str(y) + "," + str(z) + "\n")
 
     wanted = whole_projection[numpy.isin(whole_projection["Barcode"], get_real_barcodes(ID))]
     unwanted = whole_projection[numpy.invert(numpy.isin(whole_projection["Barcode"], get_real_barcodes(ID)))]
+
+    if not os.path.exists(ID + ".data"):
+        with open(ID + ".data", "w") as f:
+            f.write("x,y,z\n")
+            for x, y, z in zip(wanted["std_TSNE-1"], wanted["std_TSNE-2"], wanted["std_TSNE-3"]):
+                f.write(str(x) + "," + str(y) + "," + str(z) + "\n")
 
     fig = plt.figure()
     ax = mpl_toolkits.mplot3d.Axes3D(fig, elev=45, azim=135)
@@ -861,6 +877,6 @@ def draw_tSNE_3d(ID, genes=None):
 
 if __name__ == "__main__":
     for ID in IDs:
-        draw_tSNE_3d(ID)
+        pseudotime_3d(ID, clustering_Kmeans_with_num_3d)
     for _ in range(5):
         print("\a")
