@@ -2,7 +2,6 @@ import multiprocessing
 import hashlib
 import os
 import pickle
-import os
 import time
 import csv
 import gzip
@@ -13,6 +12,7 @@ import matplotlib.pyplot as plt
 import scipy
 import pprint
 import sklearn.cluster
+import mpl_toolkits.mplot3d
 
 
 def get_matrix(filename):
@@ -57,7 +57,9 @@ IDs = ["NS_SW1", "NS_SW2", "NS_SW3", "NS_SW4"]
 
 
 def select_highly_variable_genes(raw_data, show=True, datum_point=95):
-    data = pandas.DataFrame.from_dict({"means": raw_data.mean(axis=1).to_numpy(), "cvs": numpy.true_divide(raw_data.var(axis=1).to_numpy(), raw_data.mean(axis=1))})
+    a = raw_data.mean(axis=1).to_numpy()
+    b = raw_data.var(axis=1).to_numpy()
+    data = pandas.DataFrame.from_dict({"means": a, "cvs": numpy.divide(b, a)})
 
     data = data.loc[(data["cvs"] > 0) & (data["means"] > 0)]
 
@@ -142,7 +144,8 @@ def get_whole_data(genes=None):
 
     projection = pandas.DataFrame.from_dict(projection)
 
-    whole_data[make_md5(genes)] = projection
+    with open(make_md5(genes) + ".data", "wb") as f:
+        pickle.dump(projection, f)
 
     return projection
 
@@ -202,11 +205,11 @@ def draw_all_with_color():
     plt.close()
 
 
-def draw_tSNE(ID):
+def draw_tSNE(ID, genes=None):
     mpl.use("Agg")
     mpl.rcParams.update({"font.size": 30})
 
-    whole_projection = get_whole_data()
+    whole_projection = get_whole_data(genes)
 
     wanted = whole_projection[numpy.isin(whole_projection["Barcode"], get_real_barcodes(ID))]
     unwanted = whole_projection[numpy.invert(numpy.isin(whole_projection["Barcode"], get_real_barcodes(ID)))]
@@ -665,7 +668,7 @@ def scatter_given_genes(ID, genes=gene_1):
     def change_scale(gene_expression):
         minimum, maximum = min(gene_expression), max(gene_expression)
 
-        return list(map(lambda x: (x - minimum) / (maximum - minimum), gene_expression))
+        return list(map(lambda x: x if x > 0.1 else 0.1, list(map(lambda x: (x - minimum) / (maximum - minimum), gene_expression))))
 
     data_1 = get_data_from_id(ID, genes)
     data_2 = get_all(ID)
@@ -684,7 +687,6 @@ def scatter_given_genes(ID, genes=gene_1):
 
         plt.figure()
         for x, y, alpha in zip(data_1["std_TSNE-1"], data_1["std_TSNE-2"], gene_expression):
-            plt.scatter(x, y, c='k', alpha=0.1)
             plt.scatter(x, y, c='b', alpha=alpha)
 
         plt.grid(True)
@@ -740,7 +742,40 @@ def get_whole_data_3d(genes=None):
     return projection
 
 
+def draw_tSNE_3d(ID, genes=None):
+    mpl.use("Agg")
+    mpl.rcParams.update({"font.size": 30})
+
+    whole_projection = get_whole_data_3d(genes)
+
+    if not os.path.exists(now + ".csv"):
+        with open(now + ".csv", "w") as f:
+            f.write("x,y,z\n")
+            for x, y, z in zip(whole_projection["std_TSNE-1"], whole_projection["std_TSNE-2"], whole_projection["std_TSNE-3"]):
+                f.write(str(x) + "," + str(y) + "," + str(z) + "\n")
+
+    wanted = whole_projection[numpy.isin(whole_projection["Barcode"], get_real_barcodes(ID))]
+    unwanted = whole_projection[numpy.invert(numpy.isin(whole_projection["Barcode"], get_real_barcodes(ID)))]
+
+    fig = plt.figure()
+    ax = mpl_toolkits.mplot3d.Axes3D(fig, elev=45, azim=135)
+
+    ax.scatter(unwanted["std_TSNE-1"], unwanted["std_TSNE-2"], unwanted["std_TSNE-3"], c="tab:gray", alpha=0.6)
+    ax.scatter(wanted["std_TSNE-1"], wanted["std_TSNE-2"], wanted["std_TSNE-3"], c="tab:blue", alpha=1)
+
+    ax.set_xlabel("Standardized TSNE-1")
+    ax.set_ylabel("Standardized TSNE-2")
+    ax.set_zlabel("Standardized TSNE-3")
+    ax.set_title(ID)
+
+    fig = plt.gcf()
+    fig.set_size_inches(24, 18)
+    fig.savefig(figure_directory + ID + "_3D_" + now + ".png")
+    plt.close()
+
+
 if __name__ == "__main__":
-    get_whole_data_3d()
+    for ID in IDs:
+        draw_tSNE_3d(ID)
     for _ in range(5):
         print("\a")
