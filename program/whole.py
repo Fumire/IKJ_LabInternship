@@ -833,8 +833,8 @@ def draw_tSNE_3d(ID, genes=None):
 
     whole_projection = get_whole_data_3d(genes)
 
-    if not os.path.exists(now + ".csv"):
-        with open(now + ".csv", "w") as f:
+    if not os.path.exists(ID + "_" + now + ".csv"):
+        with open(ID + "_" + now + ".csv", "w") as f:
             f.write("x,y,z\n")
             for x, y, z in zip(whole_projection["std_TSNE-1"], whole_projection["std_TSNE-2"], whole_projection["std_TSNE-3"]):
                 f.write(str(x) + "," + str(y) + "," + str(z) + "\n")
@@ -861,6 +861,6 @@ def draw_tSNE_3d(ID, genes=None):
 
 if __name__ == "__main__":
     for ID in IDs:
-        pseudotime_3d(ID, clustering_Kmeans_with_num_3d)
+        draw_tSNE_3d(ID)
     for _ in range(5):
         print("\a")
