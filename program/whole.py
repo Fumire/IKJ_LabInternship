@@ -519,7 +519,7 @@ def heatmap_sum_top(ID, cluster_function, num_groups=10, num_gene=None, show_tex
     return (cluster_group, group_order, cluster_centers)
 
 
-def heatmap_mean_top(ID, cluster_function, num_groups=10, num_gene=None, show_text=True):
+def heatmap_mean_top(ID, cluster_function, num_groups=10, num_gene=10, show_text=False):
     if not check_valid_function(cluster_function) and not check_valid_function_3d(cluster_function):
         return
 
@@ -589,7 +589,7 @@ gene_1 = ["Grfa1", "Zbtb16", "Nanos3", "Nanos2", ",Sohlh1", "Neurog3", "Piwil4",
 gene_2 = ["Id4", "Gfra1", "Zbtb16", "Stra8", "Rhox13", "Sycp3", "Dmc1", "Piwil1", "Pgk2", "Acr", "Gapdhs", "Prm1"]
 
 
-def heatmap_given_genes(ID, cluster_function, gene_name=gene_2, num_groups=10):
+def heatmap_given_genes(ID, cluster_function, gene_name=gene_1, num_groups=10):
     if not check_valid_function(cluster_function) and not check_valid_function_3d(cluster_function):
         return
 
@@ -630,7 +630,7 @@ def heatmap_given_genes(ID, cluster_function, gene_name=gene_2, num_groups=10):
     return (cluster_group, group_order, cluster_centers)
 
 
-def pseudotime(ID, cluster_function, num_groups=100, select_gene=True):
+def pseudotime(ID, cluster_function, num_groups=10, select_gene=True):
     if not check_valid_function(cluster_function):
         return
 
@@ -660,7 +660,7 @@ def pseudotime(ID, cluster_function, num_groups=100, select_gene=True):
     plt.close()
 
 
-def pseudotime_3d(ID, cluster_function, num_groups=100, select_gene=True):
+def pseudotime_3d(ID, cluster_function, num_groups=10, select_gene=True):
     class Arrow3D(matplotlib.patches.FancyArrowPatch):
         def __init__(self, xs, ys, zs, *args, **kwargs):
             matplotlib.patches.FancyArrowPatch.__init__(self, (0, 0), (0, 0), *args, **kwargs)
@@ -877,6 +877,6 @@ def draw_tSNE_3d(ID, genes=None):
 
 if __name__ == "__main__":
     for ID in IDs:
-        pseudotime_3d(ID, clustering_Kmeans_with_num_3d)
+        pseudotime_3d(ID, clustering_Kmeans_with_num_3d, select_gene=False)
     for _ in range(5):
         print("\a")
