@@ -1,4 +1,3 @@
-import multiprocessing
 import hashlib
 import os
 import pickle
@@ -13,6 +12,7 @@ import scipy
 import pprint
 import sklearn.cluster
 import mpl_toolkits.mplot3d
+import matplotlib.patches
 
 
 def get_matrix(filename):
@@ -464,7 +464,7 @@ def sort_index(gene_list):
 
 
 def heatmap_sum_top(ID, cluster_function, num_groups=10, num_gene=None, show_text=True):
-    if not check_valid_function(cluster_function):
+    if not check_valid_function(cluster_function) and not check_valid_function_3d(cluster_function):
         return
 
     cluster_group, cluster_centers = cluster_function(ID, num_groups)
@@ -510,7 +510,7 @@ def heatmap_sum_top(ID, cluster_function, num_groups=10, num_gene=None, show_tex
 
 
 def heatmap_mean_top(ID, cluster_function, num_groups=10, num_gene=None, show_text=True):
-    if not check_valid_function(cluster_function):
+    if not check_valid_function(cluster_function) and not check_valid_function_3d(cluster_function):
         return
 
     cluster_group, cluster_centers = cluster_function(ID, num_groups)
@@ -580,7 +580,7 @@ gene_2 = ["Id4", "Gfra1", "Zbtb16", "Stra8", "Rhox13", "Sycp3", "Dmc1", "Piwil1"
 
 
 def heatmap_given_genes(ID, cluster_function, gene_name=gene_1, num_groups=10):
-    if not check_valid_function(cluster_function):
+    if not check_valid_function(cluster_function) and not check_valid_function_3d(cluster_function):
         return
 
     cluster_group, cluster_centers = cluster_function(ID, num_groups)
@@ -621,7 +621,7 @@ def heatmap_given_genes(ID, cluster_function, gene_name=gene_1, num_groups=10):
 
 
 def pseudotime(ID, cluster_function, num_groups=100, select_gene=True):
-    if not check_valid_function:
+    if not check_valid_function(cluster_function):
         return
 
     if select_gene:
@@ -647,6 +647,49 @@ def pseudotime(ID, cluster_function, num_groups=100, select_gene=True):
     fig = plt.gcf()
     fig.set_size_inches(24, 18)
     fig.savefig(figure_directory + "Arrow_" + ID + "_" + str(num_groups) + "_" + now + ".png")
+    plt.close()
+
+
+def pseudotime_3d(ID, cluster_function, num_groups=10, select_gene=True):
+    class Arrow3D(matplotlib.patches.FancyArrowPatch):
+        def __init__(self, xs, ys, zs, *args, **kwargs):
+            matplotlib.patches.FancyArrowPatch.__init__(self, (0, 0), (0, 0), *args, **kwargs)
+            self._verts3d = xs, ys, zs
+
+        def draw(self, renderer):
+            xs3d, ys3d, zs3d = self._verts3d
+            xs, ys, zs = mpl_toolkits.mplot3d.proj3d.proj_transform(xs3d, ys3d, zs3d, renderer.M)
+            self.set_positions((xs[0], ys[0]), (xs[1], ys[1]))
+            matplotlib.patches.FancyArrowPatch.draw(self, renderer)
+
+    if not check_valid_function_3d(cluster_function):
+        return
+
+    if select_gene:
+        cluster_group, group_order, cluster_centers = heatmap_given_genes(ID, cluster_function, num_groups=num_groups)
+    else:
+        cluster_group, group_order, cluster_centers = heatmap_mean_top(ID, cluster_function, num_groups=num_groups)
+    projection = get_data_from_id_3d(ID)
+
+    mpl.use("Agg")
+    mpl.rcParams.update({"font.size": 30})
+
+    fig = plt.figure()
+    ax = mpl_toolkits.mplot3d.Axes3D(fig, elev=45, azim=135)
+
+    for i in cluster_group:
+        ax.scatter(projection["std_TSNE-1"].iloc[cluster_group[i]], projection["std_TSNE-2"].iloc[cluster_group[i]], projection["std_TSNE-3"].iloc[cluster_group[i]], c=["C" + str(i % 10) for _ in range(projection["std_TSNE-1"].iloc[cluster_group[i]].size)])
+    for i in range(1, len(cluster_centers)):
+        ax.add_artist(Arrow3D([cluster_centers[group_order[i - 1]][0], cluster_centers[group_order[i]][0]], [cluster_centers[group_order[i - 1]][1], cluster_centers[group_order[i]][1]], [cluster_centers[group_order[i - 1]][2], cluster_centers[group_order[i]][2]], mutation_scale=20, lw=3, arrowstyle="-|>", color="k"))
+
+    ax.set_title("Ordering Groups in 3D")
+    ax.set_xlabel("Standardized TSNE-1")
+    ax.set_ylabel("Standardized TSNE-2")
+    ax.set_zlabel("Standardized TSNE-3")
+
+    fig = plt.gcf()
+    fig.set_size_inches(24, 18)
+    fig.savefig(figure_directory + "Arraw3D_" + ID + "_" + str(num_groups) + "_" + now + ".png")
     plt.close()
 
 
@@ -818,6 +861,6 @@ def draw_tSNE_3d(ID, genes=None):
 
 if __name__ == "__main__":
     for ID in IDs:
-        clustering_Kmeans_with_num_3d(ID, 10)
+        pseudotime_3d(ID, clustering_Kmeans_with_num_3d)
     for _ in range(5):
         print("\a")
