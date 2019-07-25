@@ -1,6 +1,8 @@
 import multiprocessing
 import hashlib
 import os
+import pickle
+import os
 import time
 import csv
 import gzip
@@ -87,9 +89,6 @@ def select_highly_variable_genes(raw_data, show=True, datum_point=95):
     return raw_data
 
 
-whole_data = dict()
-
-
 def get_whole_data(genes=None):
     def make_md5(data):
         if data is None:
@@ -97,8 +96,9 @@ def get_whole_data(genes=None):
         else:
             return hashlib.md5(str(sorted(genes)).encode("utf-8")).hexdigest()
 
-    if make_md5(genes) in whole_data:
-        return whole_data[make_md5(genes)]
+    if os.path.exists(make_md5(genes) + ".data"):
+        with open(make_md5(genes) + ".data", "rb") as f:
+            return pickle.load(f)
 
     if genes is not None and "ref" in genes:
         data = get_matrix("/home/jwlee/Spermatogenesis/result/ref/outs/filtered_feature_bc_matrix/matrix.mtx.gz")
@@ -115,7 +115,8 @@ def get_whole_data(genes=None):
         projection["std_TSNE-1"] = scipy.stats.zscore(data[0])
         projection["std_TSNE-2"] = scipy.stats.zscore(data[1])
 
-        whole_data[make_md5(genes)] = projection
+        with open(make_md5(genes) + ".data", "wb") as f:
+            pickle.dump(projection, f)
 
         return projection
 
@@ -666,7 +667,7 @@ def scatter_given_genes(ID, genes=gene_1):
 
         return list(map(lambda x: (x - minimum) / (maximum - minimum), gene_expression))
 
-    data_1 = get_data_from_id(ID)
+    data_1 = get_data_from_id(ID, genes)
     data_2 = get_all(ID)
 
     for gene in genes:
@@ -683,6 +684,7 @@ def scatter_given_genes(ID, genes=gene_1):
 
         plt.figure()
         for x, y, alpha in zip(data_1["std_TSNE-1"], data_1["std_TSNE-2"], gene_expression):
+            plt.scatter(x, y, c='k', alpha=0.1)
             plt.scatter(x, y, c='b', alpha=alpha)
 
         plt.grid(True)
@@ -692,14 +694,53 @@ def scatter_given_genes(ID, genes=gene_1):
 
         fig = plt.gcf()
         fig.set_size_inches(24, 18)
-        fig.savefig(figure_directory + "Scatter" + ID + "_" + gene + "_" + now + ".png")
+        fig.savefig(figure_directory + "Scatter_" + ID + "_" + gene + "_" + now + ".png")
         plt.close()
 
         print(gene, "Done!!")
 
 
-if __name__ == "__main__":
-    scatter_given_genes("NS_SW1")
+def get_whole_data_3d(genes=None):
+    def make_md5(data):
+        if data is None:
+            return hashlib.md5("3d".encode("utf-8")).hexdigest()
+        else:
+            return hashlib.md5(("3d" + str(sorted(data))).encode("utf-8")).hexdigest()
 
+    if os.path.exists(make_md5(genes) + ".data"):
+        with open(make_md5(genes) + ".data", "rb") as f:
+            return pickle.load(f)
+
+    data = get_matrix("/home/jwlee/Spermatogenesis/result/aggr/outs/filtered_feature_bc_matrix/matrix.mtx.gz")
+
+    if genes is None:
+        data = select_highly_variable_genes(data)
+    else:
+        data["gene"] = get_gene_name("/home/jwlee/Spermatogenesis/result/aggr/outs/filtered_feature_bc_matrix/features.tsv.gz")
+        data = data[data["gene"].isin(genes)]
+        del data["gene"]
+
+    data = sklearn.decomposition.PCA(random_state=0, n_components="mle").fit_transform(numpy.swapaxes(data.values, 0, 1))
+    print("PCA data: ", data)
+    print("Cell & Gene-like:", len(data), len(data[0]))
+
+    data = numpy.swapaxes(sklearn.manifold.TSNE(n_components=3, random_state=0).fit_transform(data), 0, 1)
+
+    projection = dict()
+    projection["Barcode"] = numpy.array(get_barcodes("/home/jwlee/Spermatogenesis/result/aggr/outs/filtered_feature_bc_matrix/barcodes.tsv.gz"))
+    projection["std_TSNE-1"] = scipy.stats.zscore(data[0])
+    projection["std_TSNE-2"] = scipy.stats.zscore(data[1])
+    projection["std_TSNE-3"] = scipy.stats.zscore(data[2])
+
+    projection = pandas.DataFrame.from_dict(projection)
+
+    with open(make_md5(genes) + ".data", "wb") as f:
+        pickle.dump(projection, f)
+
+    return projection
+
+
+if __name__ == "__main__":
+    get_whole_data_3d()
     for _ in range(5):
         print("\a")
