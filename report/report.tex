@@ -91,29 +91,182 @@
     
     \section{Introduction}
         \subsection{Single Cell Analysis}
+            In traditional, we have done RNA sequencing with bulk RNA input. With bulk RNA sequencing, we can know average gene expression from all cell, although, cellular heterogeneity is still veiled. 
+            However, nowadays, we can analysis RNA sequencing with every single cell. Therefore, we investigate expression profile of each cell, then we reveal heterogeneity and sub-population expression variability of cells.
         
         \subsection{Principal Component Analysis}
+            Principal component analysis (PCA) is a technique that finds an axis which preserves a variance of data, and then reduces high-dimensional data to low-dimensional. PCA is not a feature selection, which means choose the best feature amongst featues; but, it is a feature extraction, which means make new feature with subsist features.
         
         \subsection{T-Distributed Stochastic Neighbor Embedding}
+            T-distributed stochastic neighbor embedding (TNSE) is a kind of machine learning technique, is used to dimensional reduction. Traditional dimensional reduction technique is hard to classify each manifolds in dimension reduced data. However, TSNE can preserve such manifolds in dimension reduced data with T-distribution. 
         
         \subsection{Clustering}
-        
-            \subsubsection{K-means Algorithm}
-        
-        \subsection{Single Cell Trajectory}
+            Clustering is a algorithm which maximize inter-cluster variance and minimize inner-cluster variance. It is an unsupervised learning, not a classification, which means gathering each data for some group.
     
     \section{Method}
         \subsection{Cell Ranger}
             Cell Ranger is a set of analysis pipelines that process Chromium single-cell RNA-seq output to align reads, generate feature-barcode matrices and perform clustering and gene expression analysis. \cite{ref:cellranger}
         
-        \subsection{Seurat}
-            Seurat is an R package designed for QC, analysis, and exploration of single-cell RNA-seq data. Seurat aims to enable users to identify and interpret sources of heterogeneity from single-cell transcriptomic measurements, and to integrate diverse types of single-cell data. \cite{ref:seurat1, ref:seurat2}
-        
         \subsection{Scikit-Learn}
             Scikit-Learn is a Python module for machine learning built on top of SciPy. \cite{ref:scikit}
     
     \section{Result}
+        \subsection{Highly Variable Gene}
+            At first, I chose highly variable gene amongst genes. Highly variable gene means genes have higher means and higher CV, where CV is defined as equation \ref{eq:cv}.
+            \begin{equation}
+                \rm{CV} = \frac{\rm{Variances}}{\rm{Means}}
+                \label{eq:cv}
+            \end{equation}
+            
+            The distributed map of whole gene is in a figure \ref{fig:hvg}. I chose 822 genes which is top 5\% of both means and CVs. 
+            \begin{figure}[tbph]
+                \centering
+                \includegraphics[height=8cm]{figures/HVG.png}
+                \caption{Scatter Map of Whole Gene with Means vs. CVs}
+                \label{fig:hvg}
+            \end{figure}
+        
+        \subsection{PCA}
+            With PCA, I reduced a matrix of cell by gene. For example, an original data is 11082 $\times$ 822 of cell by gene, but, with PCA, I reduced to 11082 $\times$ 792 of cell by gene-like. 
+    
         \subsection{TSNE Map}
+            The 2D TSNE map of each sample is in figure \ref{fig:2dtsne}.
+            \begin{figure}[bph]
+                \begin{center}
+                    $\begin{array}{cc}
+                        \includegraphics[height=6cm]{figures/TSNE/1.png}
+                        &
+                        \includegraphics[height=6cm]{figures/TSNE/2.png}
+                        \\
+                        
+                        \mbox{(a) NS\_SW1} & \mbox{(b) NS\_SW2} \\
+                       
+                       \includegraphics[height=6cm]{figures/TSNE/3.png}
+                       &
+                       \includegraphics[height=6cm]{figures/TSNE/4.png}
+                       \\
+                    
+                       \mbox{(c) NS\_SW3} & \mbox{(d) NS\_SW4} \\
+                    \end{array}$
+                \end{center}
+                \caption{2D TSNE Plot of Each Samples}
+                \label{fig:2dtsne}
+            \end{figure}
+        
+        \subsection{TSNE Map in 3D}
+            However, in figure \ref{fig:2dtsne}, I could not find linear tendency. I thought that was occurred by dimensional reduction, so I added one more axis to make 3D plot. The 3D TSNE map of each sample is in figure \ref{fig:3dtsne}.
+            \begin{figure}[bph]
+                \begin{center}
+                    $\begin{array}{cc}
+                        \includegraphics[height=6cm]{figures/TSNE3D/1.png}
+                        &
+                        \includegraphics[height=6cm]{figures/TSNE3D/2.png}
+                        \\
+                        
+                        \mbox{(a) NS\_SW1} & \mbox{(b) NS\_SW2} \\
+                        
+                        \includegraphics[height=6cm]{figures/TSNE3D/3.png}
+                        &
+                        \includegraphics[height=6cm]{figures/TSNE3D/4.png}
+                        \\
+                        
+                        \mbox{(c) NS\_SW3} & \mbox{(d) NS\_SW4} \\
+                    \end{array}$
+                \end{center}
+                \label{fig:3dtsne}
+                \caption{3D TSNE Plot of Each Samples}
+            \end{figure} 
+            You can also see data via URL in table \ref{tb:3dtsne}.
+            \begin{table}[h!]
+                \centering
+                \caption{Table of URL of 3D TSNE}
+                \label{tb:3dtsne}
+                \begin{tabular}{c c}
+                    Sample & URL \\ \hline
+                    NS\_SW1 & \url{https://fumire.moe/made/IKJ_Lab/simple1.php} \\
+                    NS\_SW2 & \url{https://fumire.moe/made/IKJ_Lab/simple2.php} \\
+                    NS\_SW3 & \url{https://fumire.moe/made/IKJ_Lab/simple3.php} \\
+                    NS\_SW4 & \url{https://fumire.moe/made/IKJ_Lab/simple4.php} \\
+                \end{tabular}
+            \end{table}
+        
+        \subsection{Clustering with KMeans Algorithm}
+            Amongst many clustering algorithm, I chose KMeans algorithm. Because the hyper-parameter of KMeans algorithm is a number of groups, so the result can be intuitive. 
+            The results of Kmeans algorithm are in figure \ref{fig:kmeans}.
+            \begin{figure}[hbp]
+                \begin{center}
+                    $\begin{array}{cc}
+                        \includegraphics[height=6cm]{figures/KMeans/1.png}
+                        &
+                        \includegraphics[height=6cm]{figures/KMeans/2.png}
+                        \\
+                        
+                        \mbox{(a) NS\_SW1} & \mbox{(b) NS\_SW2} \\
+                        
+                        \includegraphics[height=6cm]{figures/KMeans/3.png}
+                        &
+                        \includegraphics[height=6cm]{figures/KMeans/4.png}
+                        \\
+                        
+                        \mbox{(c) NS\_SW3} & \mbox{(d) NS\_SW4} \\
+                    \end{array}$
+                \end{center}
+                \caption{Results of KMeans Algorithm}
+                \label{fig:kmeans}
+            \end{figure}
+        
+        \subsection{Heatmap of Marker Gene}
+            I drew a heatmap plots of marker gene. Marker gene is selected in reference. \cite{ref:sperm}
+            \subsubsection{12 Genes}
+                The heatmap plots with 12 genes are in figure \ref{fig:heat12genes}.
+                \begin{figure}[hbp]
+                    \begin{center}
+                        $\begin{array}{cc}
+                        \includegraphics[height=6cm]{figures/Heatmap/12Gene/1.png}
+                        &
+                        \includegraphics[height=6cm]{figures/Heatmap/12Gene/2.png}
+                        \\
+                        
+                        \mbox{(a) NS\_SW1} & \mbox{(b) NS\_SW2} \\
+                        
+                        \includegraphics[height=6cm]{figures/Heatmap/12Gene/3.png}
+                        &
+                        \includegraphics[height=6cm]{figures/Heatmap/12Gene/4.png}
+                        \\
+                        
+                        \mbox{(c) NS\_SW3} & \mbox{(d) NS\_SW4} \\
+                    \end{array}$
+                    \end{center}
+                    \caption{Results of KMeans Algorithm}
+                    \label{fig:heat12genes}
+                \end{figure}
+            \subsubsection{65 Genes}
+                The heatmap plots with 65 genes are in figure \ref{fig:heat65gene}. 
+                \begin{figure}[hbp]
+                    \begin{center}
+                        $\begin{array}{cc}
+                        \includegraphics[width=8cm]{figures/Heatmap/65Gene/1.png}
+                        &
+                        \includegraphics[width=8cm]{figures/Heatmap/65Gene/2.png}
+                        \\
+                        
+                        \mbox{(a) NS\_SW1} & \mbox{(b) NS\_SW2} \\
+                        
+                        \includegraphics[width=8cm]{figures/Heatmap/65Gene/3.png}
+                        &
+                        \includegraphics[width=8cm]{figures/Heatmap/65Gene/4.png}
+                        \\
+                        
+                        \mbox{(c) NS\_SW3} & \mbox{(d) NS\_SW4} \\
+                    \end{array}$
+                    \end{center}
+                    \caption{Results of KMeans Algorithm}
+                    \label{fig:heat65gene}
+                    \end{figure}
+            \subsubsection{Top 10 Gene}
+            
+        
+        \subsection{Pseudo-time}
     
     \section{Discussion}
     
