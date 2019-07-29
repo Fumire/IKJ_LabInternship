@@ -86,7 +86,6 @@
     \tableofcontents
     \listoftables
     \listoffigures
-    \listoflistings
     \newpage
     
     \section{Introduction}
@@ -373,6 +372,10 @@
                 \end{figure}
     
     \section{Discussion}
+        I have studied about single cell trajectory and pseudo-time analysis via this study. However, this study has some limitation points. \\
+        At first, a weakness of algorithm in finding orders of cluster. According to algorithm, every gene should have only one local maximum; however, some genes, such as ID4, have more than one local maximum during spermatogenesis. \cite{ref:sperm} \\
+        Second, the best combination of genes have not discovered. Some well-known marker gene have not been detected in this study. Hence, I should find the best combination upon each single cell RNA sequencing. \\
+        At last, small cell number has made limitation. In the reference, they have used 62,000 cells; however, I only have 11,000 cells for RNA sequencing. Therefore, small cell number might occur some miss in RNA sequencing.
     
     \section{Acknowledgment}
         This study has been supported by Inkyung Jung Lab (\url{https://junglab.wixsite.com/home}).
