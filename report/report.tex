@@ -134,16 +134,16 @@
             \begin{figure}[bph]
                 \begin{center}
                     $\begin{array}{cc}
-                        \includegraphics[height=6cm]{figures/TSNE/1.png}
+                        \includegraphics[height=5cm]{figures/TSNE/1.png}
                         &
-                        \includegraphics[height=6cm]{figures/TSNE/2.png}
+                        \includegraphics[height=5cm]{figures/TSNE/2.png}
                         \\
                         
                         \mbox{(a) NS\_SW1} & \mbox{(b) NS\_SW2} \\
                        
-                       \includegraphics[height=6cm]{figures/TSNE/3.png}
+                       \includegraphics[height=5cm]{figures/TSNE/3.png}
                        &
-                       \includegraphics[height=6cm]{figures/TSNE/4.png}
+                       \includegraphics[height=5cm]{figures/TSNE/4.png}
                        \\
                     
                        \mbox{(c) NS\_SW3} & \mbox{(d) NS\_SW4} \\
@@ -158,16 +158,16 @@
             \begin{figure}[bph]
                 \begin{center}
                     $\begin{array}{cc}
-                        \includegraphics[height=6cm]{figures/TSNE3D/1.png}
+                        \includegraphics[height=5cm]{figures/TSNE3D/1.png}
                         &
-                        \includegraphics[height=6cm]{figures/TSNE3D/2.png}
+                        \includegraphics[height=5cm]{figures/TSNE3D/2.png}
                         \\
                         
                         \mbox{(a) NS\_SW1} & \mbox{(b) NS\_SW2} \\
                         
-                        \includegraphics[height=6cm]{figures/TSNE3D/3.png}
+                        \includegraphics[height=5cm]{figures/TSNE3D/3.png}
                         &
-                        \includegraphics[height=6cm]{figures/TSNE3D/4.png}
+                        \includegraphics[height=5cm]{figures/TSNE3D/4.png}
                         \\
                         
                         \mbox{(c) NS\_SW3} & \mbox{(d) NS\_SW4} \\
@@ -192,20 +192,20 @@
         
         \subsection{Clustering with KMeans Algorithm}
             Amongst many clustering algorithm, I chose KMeans algorithm. Because the hyper-parameter of KMeans algorithm is a number of groups, so the result can be intuitive. 
-            The results of Kmeans algorithm are in figure \ref{fig:kmeans}.
+            The results of Kmeans algorithm are in figure \ref{fig:kmeans}. Also, you may see data via URL in table \ref{tb:cluster}.
             \begin{figure}[hbp]
                 \begin{center}
                     $\begin{array}{cc}
-                        \includegraphics[height=6cm]{figures/KMeans/1.png}
+                        \includegraphics[height=5cm]{figures/KMeans/1.png}
                         &
-                        \includegraphics[height=6cm]{figures/KMeans/2.png}
+                        \includegraphics[height=5cm]{figures/KMeans/2.png}
                         \\
                         
                         \mbox{(a) NS\_SW1} & \mbox{(b) NS\_SW2} \\
                         
-                        \includegraphics[height=6cm]{figures/KMeans/3.png}
+                        \includegraphics[height=5cm]{figures/KMeans/3.png}
                         &
-                        \includegraphics[height=6cm]{figures/KMeans/4.png}
+                        \includegraphics[height=5cm]{figures/KMeans/4.png}
                         \\
                         
                         \mbox{(c) NS\_SW3} & \mbox{(d) NS\_SW4} \\
@@ -215,6 +215,19 @@
                 \label{fig:kmeans}
             \end{figure}
         
+            \begin{table}[h!]
+                \centering
+                \caption{Table of URL of 3D TSNE}
+                \label{tb:cluster}
+                \begin{tabular}{c c}
+                    Sample & URL \\ \hline
+                    NS\_SW1 & \url{https://fumire.moe/made/IKJ_Lab/cluster1.php} \\
+                    NS\_SW2 & \url{https://fumire.moe/made/IKJ_Lab/cluster2.php} \\
+                    NS\_SW3 & \url{https://fumire.moe/made/IKJ_Lab/cluster3.php} \\
+                    NS\_SW4 & \url{https://fumire.moe/made/IKJ_Lab/cluster4.php} \\
+                \end{tabular}
+            \end{table}
+        
         \subsection{Heatmap of Marker Gene}
             I drew a heatmap plots of marker gene. Marker gene is selected in reference. \cite{ref:sperm}
             \subsubsection{12 Genes}
@@ -222,22 +235,22 @@
                 \begin{figure}[hbp]
                     \begin{center}
                         $\begin{array}{cc}
-                        \includegraphics[height=6cm]{figures/Heatmap/12Gene/1.png}
+                        \includegraphics[height=5cm]{figures/Heatmap/12Gene/1.png}
                         &
-                        \includegraphics[height=6cm]{figures/Heatmap/12Gene/2.png}
+                        \includegraphics[height=5cm]{figures/Heatmap/12Gene/2.png}
                         \\
                         
                         \mbox{(a) NS\_SW1} & \mbox{(b) NS\_SW2} \\
                         
-                        \includegraphics[height=6cm]{figures/Heatmap/12Gene/3.png}
+                        \includegraphics[height=5cm]{figures/Heatmap/12Gene/3.png}
                         &
-                        \includegraphics[height=6cm]{figures/Heatmap/12Gene/4.png}
+                        \includegraphics[height=5cm]{figures/Heatmap/12Gene/4.png}
                         \\
                         
                         \mbox{(c) NS\_SW3} & \mbox{(d) NS\_SW4} \\
                     \end{array}$
                     \end{center}
-                    \caption{Results of KMeans Algorithm}
+                    \caption{Heatmap Plot of 12 Marker Genes}
                     \label{fig:heat12genes}
                 \end{figure}
             \subsubsection{65 Genes}
@@ -260,17 +273,109 @@
                         \mbox{(c) NS\_SW3} & \mbox{(d) NS\_SW4} \\
                     \end{array}$
                     \end{center}
-                    \caption{Results of KMeans Algorithm}
+                    \caption{Heatmap Plot of 65 Marker Genes}
                     \label{fig:heat65gene}
                     \end{figure}
             \subsubsection{Top 10 Gene}
-            
+                The heatmap plots with the 10 genes which have highest gene expression are in figure \ref{fig:heat10genes}.
+                \begin{figure}[hbp]
+                    \begin{center}
+                        $\begin{array}{cc}
+                            \includegraphics[height=5cm]{figures/Heatmap/Top10/1.png}
+                            &
+                            \includegraphics[height=5cm]{figures/Heatmap/Top10/2.png}
+                            \\
+                            
+                            \mbox{(a) NS\_SW1} & \mbox{(b) NS\_SW2} \\
+                            
+                            \includegraphics[height=5cm]{figures/Heatmap/Top10/3.png}
+                            &
+                            \includegraphics[height=5cm]{figures/Heatmap/Top10/4.png}
+                            \\
+                            
+                            \mbox{(c) NS\_SW3} & \mbox{(d) NS\_SW4} \\
+                        \end{array}$
+                    \end{center}
+                    \caption{Heatmap Plot of 10 Genes which have Highest Expression}
+                    \label{fig:heat10genes}
+                \end{figure}
         
         \subsection{Pseudo-time}
+            According to gene expression level, I can derive an order of each cluster, in other words, pseudo-time. 
+            \subsubsection{12 Genes}
+                The pseudo-time plots with 12 marker genes are in figure \ref{fig:time12gene}.
+                \begin{figure}[hbp]
+                    \begin{center}
+                        $\begin{array}{cc}
+                            \includegraphics[height=5cm]{figures/Pseudotime/12Gene/1.png}
+                            &
+                            \includegraphics[height=5cm]{figures/Pseudotime/12Gene/2.png}
+                            \\
+                            
+                            \mbox{(a) NS\_SW1} & \mbox{(b) NS\_SW2} \\
+                            
+                            \includegraphics[height=5cm]{figures/Pseudotime/12Gene/3.png}
+                            &
+                            \includegraphics[height=5cm]{figures/Pseudotime/12Gene/4.png}
+                            \\
+                            
+                            \mbox{(c) NS\_SW3} & \mbox{(d) NS\_SW4} \\
+                        \end{array}$
+                    \end{center}
+                    \caption{Pseudo-time Plot with 12 Marker Genes}
+                    \label{fig:time12gene}
+                \end{figure}
+            
+            \subsubsection{65 Genes}
+                The pseudo-time plots with 65 marker genes are in figure \ref{fig:time65gene}.
+                \begin{figure}[hbp]
+                    \begin{center}
+                        $\begin{array}{cc}
+                            \includegraphics[height=5cm]{figures/Pseudotime/65Gene/1.png}
+                            &
+                            \includegraphics[height=5cm]{figures/Pseudotime/65Gene/2.png}\\
+                            
+                            \mbox{(a) NS\_SW1} & \mbox{(b) NS\_SW2} \\
+                            
+                            \includegraphics[height=5cm]{figures/Pseudotime/65Gene/3.png}
+                            &
+                            \includegraphics[height=5cm]{figures/Pseudotime/65Gene/4.png}\\
+                            
+                            \mbox{(c) NS\_SW3} & \mbox{(d) NS\_SW4} \\
+                        \end{array}$
+                    \end{center}
+                    \caption{Pseudo-time Plot with 65 Marker Genes}
+                    \label{fig:time65gene}
+                \end{figure}
+            
+            \subsubsection{Top 10 Gene}
+                The heatmap plots with the 10 genes which have highest gene expression are in figure \ref{fig:time10gene}.
+                \begin{figure}[hbp]
+                    \begin{center}
+                        $\begin{array}{cc}
+                            \includegraphics[height=5cm]{figures/Pseudotime/Top10/1.png}
+                            &
+                            \includegraphics[height=5cm]{figures/Pseudotime/Top10/2.png}
+                            \\
+                            
+                            \mbox{(a) NS\_SW1} & \mbox{(b) NS\_SW2} \\
+                            
+                            \includegraphics[height=5cm]{figures/Pseudotime/Top10/3.png}
+                            &
+                            \includegraphics[height=5cm]{figures/Pseudotime/Top10/4.png}
+                            \\
+                            
+                            \mbox{(c) NS\_SW3} & \mbox{(d) NS\_SW4} \\
+                        \end{array}$
+                    \end{center}
+                    \caption{Pseudo-time Plot with 10 Gene which have Highest Expression}
+                    \label{fig:time10gene}
+                \end{figure}
     
     \section{Discussion}
     
     \section{Acknowledgment}
+        This study has been supported by Inkyung Jung Lab (\url{https://junglab.wixsite.com/home}).
     
     \addcontentsline{toc}{section}{References}
     \bibliographystyle{apalike}
